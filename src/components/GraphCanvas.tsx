@@ -1,15 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  ActiveCurve,
-  AuxDef,
-  buildScopeWithDefs,
-  findNotablePoints,
-} from '../engine/evaluator';
-import {
-  evaluateCompiled,
-  evaluateComplex,
-  formatComplex,
-} from '../engine/parser';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActiveCurve, AuxDef } from '../engine/evaluator';
+import { buildPlot, pickHover, PlotItem, Pt, Size, SnapTarget } from '../engine/plot';
 import {
   computeGridStep,
   formatAxisNumber,
@@ -18,7 +9,7 @@ import {
   worldToScreenX,
   worldToScreenY,
 } from '../engine/viewport';
-import { NotablePoint, RenderOverlay, Viewport } from '../types';
+import { RenderOverlay, Viewport } from '../types';
 
 interface GraphCanvasProps {
   curves: ActiveCurve[];
@@ -29,15 +20,6 @@ interface GraphCanvasProps {
   renderOverlay?: RenderOverlay;
   /** Optional interactive drag handler in world coordinates. Return true to consume drag instead of panning. */
   onDragWorld?: (wx: number, wy: number, phase: 'down' | 'move') => boolean;
-}
-
-interface HoverSnap {
-  sx: number;
-  sy: number;
-  wx: number;
-  wy: number;
-  label: string;
-  color: string;
 }
 
 function drawArrow(
@@ -76,6 +58,200 @@ function drawArrow(
     ctx.fill();
   }
   ctx.restore();
+}
+
+function drawPolyline(ctx: CanvasRenderingContext2D, segments: Pt[][]) {
+  ctx.beginPath();
+  for (const seg of segments) {
+    if (seg.length === 0) continue;
+    ctx.moveTo(seg[0].sx, seg[0].sy);
+    for (let i = 1; i < seg.length; i++) ctx.lineTo(seg[i].sx, seg[i].sy);
+  }
+  ctx.stroke();
+}
+
+function drawMarker(
+  ctx: CanvasRenderingContext2D,
+  at: Pt,
+  color: string,
+  radius: number,
+  ring: number,
+  label: string,
+) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(at.sx, at.sy, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = ring;
+  ctx.stroke();
+  ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(label, at.sx + 8, at.sy - 6);
+}
+
+function drawItem(
+  ctx: CanvasRenderingContext2D,
+  item: PlotItem,
+  origin: Pt,
+  size: Size,
+) {
+  const { width, height } = size;
+  switch (item.kind) {
+    case 'trail':
+      ctx.save();
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = item.width;
+      ctx.globalAlpha = item.alpha;
+      drawPolyline(ctx, item.segments);
+      ctx.restore();
+      return;
+    case 'particle':
+      if (item.velocity) {
+        drawArrow(
+          ctx,
+          item.at.sx,
+          item.at.sy,
+          item.velocity.sx,
+          item.velocity.sy,
+          '#fbbf24',
+        );
+      }
+      drawMarker(ctx, item.at, item.color, 5.5, 1.8, item.label);
+      return;
+    case 'phasor':
+      if (item.projection) {
+        ctx.save();
+        ctx.strokeStyle = item.color;
+        ctx.globalAlpha = 0.35;
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(item.at.sx, item.at.sy);
+        ctx.lineTo(item.at.sx, origin.sy);
+        ctx.moveTo(item.at.sx, item.at.sy);
+        ctx.lineTo(origin.sx, item.at.sy);
+        ctx.stroke();
+        ctx.restore();
+      }
+      drawArrow(ctx, origin.sx, origin.sy, item.at.sx, item.at.sy, item.color);
+      drawMarker(ctx, item.at, item.color, 5, 1.5, item.label);
+      return;
+    case 'vline': {
+      const { sx } = item;
+      if (item.fill) {
+        ctx.save();
+        ctx.fillStyle = item.color;
+        ctx.globalAlpha = 0.2;
+        if (item.fill === 'right') {
+          const xStart = Math.max(0, sx);
+          if (xStart < width) ctx.fillRect(xStart, 0, width - xStart, height);
+        } else {
+          const xEnd = Math.min(width, sx);
+          if (xEnd > 0) ctx.fillRect(0, 0, xEnd, height);
+        }
+        ctx.restore();
+      }
+      if (sx >= -2 && sx <= width + 2) {
+        ctx.save();
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2.4;
+        if (item.strict) ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, height);
+        ctx.stroke();
+        ctx.restore();
+      }
+      return;
+    }
+    case 'function': {
+      if (item.fill) {
+        const edgeY = item.fill === 'above' ? 0 : height;
+        ctx.save();
+        ctx.fillStyle = item.color;
+        ctx.globalAlpha = 0.2;
+        for (const seg of item.re) {
+          if (seg.length < 2) continue;
+          ctx.beginPath();
+          ctx.moveTo(seg[0].sx, edgeY);
+          for (const pt of seg) {
+            ctx.lineTo(pt.sx, Math.min(Math.max(pt.sy, -height), height * 2));
+          }
+          ctx.lineTo(seg[seg.length - 1].sx, edgeY);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      ctx.save();
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 2.4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (item.strict) ctx.setLineDash([7, 5]);
+      drawPolyline(ctx, item.re);
+      ctx.restore();
+      if (item.im.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = item.color;
+        ctx.globalAlpha = 0.78;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 4]);
+        drawPolyline(ctx, item.im);
+        ctx.restore();
+      }
+      return;
+    }
+  }
+}
+
+function drawHover(
+  ctx: CanvasRenderingContext2D,
+  snap: SnapTarget,
+  size: Size,
+) {
+  const { width, height } = size;
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.25)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(snap.sx, 0);
+  ctx.lineTo(snap.sx, height);
+  ctx.moveTo(0, snap.sy);
+  ctx.lineTo(width, snap.sy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = snap.color;
+  ctx.beginPath();
+  ctx.arc(snap.sx, snap.sy, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace';
+  const textW = ctx.measureText(snap.label).width;
+  const boxW = textW + 16;
+  const boxH = 26;
+  const boxX = Math.min(Math.max(snap.sx + 12, 8), width - boxW - 8);
+  const boxY = Math.max(snap.sy - 34, 8);
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  ctx.strokeStyle = snap.color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxW, boxH, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(snap.label, boxX + 8, boxY + boxH / 2);
 }
 
 export function GraphCanvas({
@@ -118,7 +294,24 @@ export function GraphCanvas({
     return () => obs.disconnect();
   }, []);
 
-  // Draw frame
+  const plot = useMemo(
+    () => buildPlot(curves, defs, scope, viewport, size),
+    [curves, defs, scope, viewport, size],
+  );
+  const hover = useMemo(
+    () =>
+      mousePos ? pickHover(plot, curves, scope, viewport, size, mousePos) : null,
+    [plot, curves, scope, viewport, size, mousePos],
+  );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size.width * dpr;
+    canvas.height = size.height * dpr;
+  }, [size]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -127,8 +320,6 @@ export function GraphCanvas({
 
     const dpr = window.devicePixelRatio || 1;
     const { width, height } = size;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Background
@@ -217,394 +408,27 @@ export function GraphCanvas({
     }
 
     // Axis name indicators (Re / Im when Argand-Gauss z-curves are present)
-    const hasZCurves = curves.some((c) => c.axis === 'z');
-    ctx.fillStyle = hasZCurves ? '#38bdf8' : '#64748b';
+    ctx.fillStyle = plot.hasZ ? '#38bdf8' : '#64748b';
     ctx.font = '600 12px ui-monospace, SFMono-Regular, Menlo, monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
     ctx.fillText(
-      hasZCurves ? 'Re (x)' : 'x',
+      plot.hasZ ? 'Re (x)' : 'x',
       width - 10,
       Math.min(Math.max(originY - 6, 20), height - 10),
     );
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(
-      hasZCurves ? 'Im (y)' : 'y',
+      plot.hasZ ? 'Im (y)' : 'y',
       Math.min(Math.max(originX + 8, 10), width - 54),
       10,
     );
 
-    const zSnapPoints: Array<{
-      sx: number;
-      sy: number;
-      wx: number;
-      wy: number;
-      label: string;
-      color: string;
-    }> = [];
-
-    const anyDefUsesTime = defs.some((d) => d.usesTime);
-    const scopeAtTime = (tau: number) =>
-      anyDefUsesTime
-        ? buildScopeWithDefs({ ...scope, t: tau }, defs)
-        : { ...scope, t: tau };
-
-    // Plot curves, inequality regions, parametric trajectories, and Argand-Gauss vectors
-    const pixelStep = 1.5;
-    for (const curve of curves) {
-      const isStrict = curve.relation === '>' || curve.relation === '<';
-      const isGreater = curve.relation === '>' || curve.relation === '>=';
-      const isLess = curve.relation === '<' || curve.relation === '<=';
-
-      // --- PARAMETRIC 2D CURVE: (x(t), y(t)) ---
-      if (curve.axis === 'parametric' && curve.compiledY) {
-        const isDynamic = curve.usesTime || anyDefUsesTime;
-        const tNow = typeof scope.t === 'number' ? scope.t : 0;
-
-        if (isDynamic) {
-          const tEnd = Math.max(6, tNow);
-          const tStart = Math.max(0, tEnd - 12);
-          const steps = 260;
-
-          ctx.save();
-          ctx.strokeStyle = curve.color;
-          ctx.lineWidth = 2.2;
-          ctx.globalAlpha = 0.7;
-          ctx.beginPath();
-          let started = false;
-          for (let k = 0; k <= steps; k++) {
-            const tau = tStart + ((tEnd - tStart) * k) / steps;
-            const s = scopeAtTime(tau);
-            const wx = evaluateCompiled(curve.compiled, s);
-            const wy = evaluateCompiled(curve.compiledY, s);
-            if (wx === null || wy === null) {
-              started = false;
-              continue;
-            }
-            const sx = worldToScreenX(wx, viewport, width);
-            const sy = worldToScreenY(wy, viewport, height);
-            if (!started) {
-              ctx.moveTo(sx, sy);
-              started = true;
-            } else {
-              ctx.lineTo(sx, sy);
-            }
-          }
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        const wx = evaluateCompiled(curve.compiled, scope);
-        const wy = evaluateCompiled(curve.compiledY, scope);
-        if (wx !== null && wy !== null) {
-          const sx = worldToScreenX(wx, viewport, width);
-          const sy = worldToScreenY(wy, viewport, height);
-
-          // Velocity tangent vector via finite difference when animated
-          if (isDynamic) {
-            const eps = 0.01;
-            const s1 = scopeAtTime(tNow + eps);
-            const s0 = scopeAtTime(Math.max(0, tNow - eps));
-            const dt = tNow + eps - Math.max(0, tNow - eps);
-            const x1 = evaluateCompiled(curve.compiled, s1);
-            const y1 = evaluateCompiled(curve.compiledY, s1);
-            const x0 = evaluateCompiled(curve.compiled, s0);
-            const y0 = evaluateCompiled(curve.compiledY, s0);
-            if (
-              dt > 0 &&
-              x1 !== null &&
-              y1 !== null &&
-              x0 !== null &&
-              y0 !== null
-            ) {
-              const vx = (x1 - x0) / dt;
-              const vy = (y1 - y0) / dt;
-              const speed = Math.hypot(vx, vy);
-              if (speed > 1e-4) {
-                const arrowScale = Math.min(48, Math.max(18, speed * 5));
-                const vxPx = (vx / speed) * arrowScale;
-                const vyPx = (-vy / speed) * arrowScale;
-                drawArrow(ctx, sx, sy, sx + vxPx, sy + vyPx, '#fbbf24');
-              }
-            }
-          }
-
-          ctx.fillStyle = curve.color;
-          ctx.beginPath();
-          ctx.arc(sx, sy, 5.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.8;
-          ctx.stroke();
-
-          const prefix = curve.labelName ? `${curve.labelName} ` : '';
-          const ptLabel = `${prefix}(${wx.toFixed(2)}, ${wy.toFixed(2)})`;
-          ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
-          ctx.fillStyle = '#e2e8f0';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(ptLabel, sx + 8, sy - 6);
-
-          zSnapPoints.push({
-            sx,
-            sy,
-            wx,
-            wy,
-            label: ptLabel,
-            color: curve.color,
-          });
-        }
-        continue;
-      }
-
-      // --- MODE 2: Argand-Gauss complex plane (z = ... or z(t) = ...) ---
-      if (curve.axis === 'z') {
-        const isDynamic = curve.usesTime || anyDefUsesTime;
-        if (isDynamic) {
-          const tNow = typeof scope.t === 'number' ? scope.t : 0;
-          const tEnd = Math.max(2 * Math.PI, tNow);
-          const tStart = Math.max(0, tEnd - 4 * Math.PI);
-          const steps = 260;
-
-          ctx.save();
-          ctx.strokeStyle = curve.color;
-          ctx.lineWidth = 2;
-          ctx.globalAlpha = 0.65;
-          ctx.beginPath();
-          let started = false;
-          for (let k = 0; k <= steps; k++) {
-            const tau = tStart + ((tEnd - tStart) * k) / steps;
-            const val = evaluateComplex(curve.compiled, scopeAtTime(tau));
-            if (!val) {
-              started = false;
-              continue;
-            }
-            const sx = worldToScreenX(val.re, viewport, width);
-            const sy = worldToScreenY(val.im, viewport, height);
-            if (!started) {
-              ctx.moveTo(sx, sy);
-              started = true;
-            } else {
-              ctx.lineTo(sx, sy);
-            }
-          }
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        const current = evaluateComplex(curve.compiled, scope);
-        if (current) {
-          const sx = worldToScreenX(current.re, viewport, width);
-          const sy = worldToScreenY(current.im, viewport, height);
-
-          // Projection lines to Re / Im axes for static z vectors
-          if (!isDynamic) {
-            ctx.save();
-            ctx.strokeStyle = curve.color;
-            ctx.globalAlpha = 0.35;
-            ctx.setLineDash([4, 4]);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(sx, originY);
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(originX, sy);
-            ctx.stroke();
-            ctx.restore();
-          }
-
-          drawArrow(ctx, originX, originY, sx, sy, curve.color);
-
-          ctx.fillStyle = curve.color;
-          ctx.beginPath();
-          ctx.arc(sx, sy, 5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-
-          // Compact inline label
-          const namePrefix =
-            curve.labelName && curve.labelName !== 'z'
-              ? `${curve.labelName}: `
-              : '';
-          ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
-          ctx.fillStyle = '#e2e8f0';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(
-            `${namePrefix}${formatComplex(current.re, current.im)}`,
-            sx + 8,
-            sy - 6,
-          );
-
-          const mod = Math.hypot(current.re, current.im);
-          const deg = (Math.atan2(current.im, current.re) * 180) / Math.PI;
-          zSnapPoints.push({
-            sx,
-            sy,
-            wx: current.re,
-            wy: current.im,
-            label: `${curve.labelName ?? 'z'} = ${formatComplex(current.re, current.im)}  (|z|=${mod.toFixed(2)}, θ=${deg.toFixed(0)}°)`,
-            color: curve.color,
-          });
-        }
-        continue;
-      }
-
-      // --- Vertical x = expr or half-plane x > expr / x < expr ---
-      if (curve.axis === 'x') {
-        const wx = evaluateCompiled(curve.compiled, { ...scope });
-        if (wx === null) continue;
-        const sx = worldToScreenX(wx, viewport, width);
-
-        if (isGreater || isLess) {
-          ctx.save();
-          ctx.fillStyle = curve.color;
-          ctx.globalAlpha = 0.2;
-          if (isGreater) {
-            const xStart = Math.max(0, sx);
-            if (xStart < width) ctx.fillRect(xStart, 0, width - xStart, height);
-          } else {
-            const xEnd = Math.min(width, sx);
-            if (xEnd > 0) ctx.fillRect(0, 0, xEnd, height);
-          }
-          ctx.restore();
-        }
-
-        if (sx >= -2 && sx <= width + 2) {
-          ctx.save();
-          ctx.strokeStyle = curve.color;
-          ctx.lineWidth = 2.4;
-          if (isStrict) ctx.setLineDash([7, 5]);
-          ctx.beginPath();
-          ctx.moveTo(sx, 0);
-          ctx.lineTo(sx, height);
-          ctx.stroke();
-          ctx.restore();
-        }
-        continue;
-      }
-
-      // --- MODE 1: y = f(x) (Real part solid, Imaginary part dotted when im != 0) ---
-      const reSegments: Array<Array<{ sx: number; sy: number }>> = [];
-      let curReSeg: Array<{ sx: number; sy: number }> = [];
-      let prevReSy: number | null = null;
-
-      const imSegments: Array<Array<{ sx: number; sy: number }>> = [];
-      let curImSeg: Array<{ sx: number; sy: number }> = [];
-      let prevImSy: number | null = null;
-      let hasImaginary = false;
-
-      for (let sx = 0; sx <= width; sx += pixelStep) {
-        const wx = screenToWorldX(sx, viewport, width);
-        const val = evaluateComplex(curve.compiled, { ...scope, x: wx });
-        if (val === null) {
-          if (curReSeg.length > 0) {
-            reSegments.push(curReSeg);
-            curReSeg = [];
-          }
-          if (curImSeg.length > 0) {
-            imSegments.push(curImSeg);
-            curImSeg = [];
-          }
-          prevReSy = null;
-          prevImSy = null;
-          continue;
-        }
-
-        const reSy = worldToScreenY(val.re, viewport, height);
-        if (prevReSy !== null && Math.abs(reSy - prevReSy) > height * 0.85) {
-          if (curReSeg.length > 0) {
-            reSegments.push(curReSeg);
-            curReSeg = [];
-          }
-        }
-        curReSeg.push({ sx, sy: reSy });
-        prevReSy = reSy;
-
-        if (Math.abs(val.im) > 1e-7) {
-          hasImaginary = true;
-          const imSy = worldToScreenY(val.im, viewport, height);
-          if (prevImSy !== null && Math.abs(imSy - prevImSy) > height * 0.85) {
-            if (curImSeg.length > 0) {
-              imSegments.push(curImSeg);
-              curImSeg = [];
-            }
-          }
-          curImSeg.push({ sx, sy: imSy });
-          prevImSy = imSy;
-        } else {
-          if (curImSeg.length > 0) {
-            imSegments.push(curImSeg);
-            curImSeg = [];
-          }
-          prevImSy = null;
-        }
-      }
-      if (curReSeg.length > 0) reSegments.push(curReSeg);
-      if (curImSeg.length > 0) imSegments.push(curImSeg);
-
-      // Fill area for inequalities (y > f(x) -> shade to top; y < f(x) -> shade to bottom)
-      if (isGreater || isLess) {
-        const edgeY = isGreater ? 0 : height;
-        ctx.save();
-        ctx.fillStyle = curve.color;
-        ctx.globalAlpha = 0.2;
-        for (const seg of reSegments) {
-          if (seg.length < 2) continue;
-          ctx.beginPath();
-          ctx.moveTo(seg[0].sx, edgeY);
-          for (const pt of seg) {
-            ctx.lineTo(pt.sx, Math.min(Math.max(pt.sy, -height), height * 2));
-          }
-          ctx.lineTo(seg[seg.length - 1].sx, edgeY);
-          ctx.closePath();
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      // Stroke Real curve
-      ctx.save();
-      ctx.strokeStyle = curve.color;
-      ctx.lineWidth = 2.4;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      if (isStrict) ctx.setLineDash([7, 5]);
-      ctx.beginPath();
-      for (const seg of reSegments) {
-        if (seg.length === 0) continue;
-        ctx.moveTo(seg[0].sx, seg[0].sy);
-        for (let i = 1; i < seg.length; i++) {
-          ctx.lineTo(seg[i].sx, seg[i].sy);
-        }
-      }
-      ctx.stroke();
-      ctx.restore();
-
-      // Stroke Imaginary curve (dotted) when present
-      if (hasImaginary && imSegments.length > 0) {
-        ctx.save();
-        ctx.strokeStyle = curve.color;
-        ctx.globalAlpha = 0.78;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([3, 4]);
-        ctx.beginPath();
-        for (const seg of imSegments) {
-          if (seg.length === 0) continue;
-          ctx.moveTo(seg[0].sx, seg[0].sy);
-          for (let i = 1; i < seg.length; i++) {
-            ctx.lineTo(seg[i].sx, seg[i].sy);
-          }
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
+    for (const item of plot.items) {
+      drawItem(ctx, item, plot.origin, size);
     }
 
-    // Optional module-specific visual overlay (e.g. Physics annotations, Sun, cannon, vectors)
     if (renderOverlay) {
       ctx.save();
       renderOverlay(ctx, {
@@ -618,17 +442,7 @@ export function GraphCanvas({
       ctx.restore();
     }
 
-    // Notable points (roots & intersections)
-    const notable: NotablePoint[] = findNotablePoints(
-      curves,
-      scope,
-      xMin,
-      xMax,
-      yMin,
-      yMax,
-    );
-
-    for (const pt of notable) {
+    for (const pt of plot.notable) {
       const sx = worldToScreenX(pt.x, viewport, width);
       const sy = worldToScreenY(pt.y, viewport, height);
       ctx.fillStyle = pt.color;
@@ -640,133 +454,8 @@ export function GraphCanvas({
       ctx.stroke();
     }
 
-    // Inspector hover snap
-    if (mousePos) {
-      let bestSnap: HoverSnap | null = null;
-      let bestDist = 22;
-
-      // Priority 1: snap to Argand-Gauss z points & parametric particles
-      for (const zp of zSnapPoints) {
-        const dist = Math.hypot(zp.sx - mousePos.sx, zp.sy - mousePos.sy);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestSnap = {
-            sx: zp.sx,
-            sy: zp.sy,
-            wx: zp.wx,
-            wy: zp.wy,
-            label: zp.label,
-            color: zp.color,
-          };
-        }
-      }
-
-      // Priority 2: snap to notable points
-      if (!bestSnap) {
-        for (const pt of notable) {
-          const sx = worldToScreenX(pt.x, viewport, width);
-          const sy = worldToScreenY(pt.y, viewport, height);
-          const dist = Math.hypot(sx - mousePos.sx, sy - mousePos.sy);
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestSnap = {
-              sx,
-              sy,
-              wx: pt.x,
-              wy: pt.y,
-              label: pt.label,
-              color: pt.color,
-            };
-          }
-        }
-      }
-
-      // Priority 3: snap to nearest y = f(x) curve (Real or Imaginary branch)
-      if (!bestSnap) {
-        const wx = screenToWorldX(mousePos.sx, viewport, width);
-        for (const curve of curves) {
-          if (curve.axis !== 'y') continue;
-          const val = evaluateComplex(curve.compiled, { ...scope, x: wx });
-          if (!val) continue;
-
-          const reSy = worldToScreenY(val.re, viewport, height);
-          const imSy = worldToScreenY(val.im, viewport, height);
-          const distRe = Math.abs(reSy - mousePos.sy);
-          const distIm =
-            Math.abs(val.im) > 1e-7 ? Math.abs(imSy - mousePos.sy) : Infinity;
-
-          const minDist = Math.min(distRe, distIm);
-          if (minDist < bestDist) {
-            bestDist = minDist;
-            const snapSy = distRe <= distIm ? reSy : imSy;
-            const snapWy = distRe <= distIm ? val.re : val.im;
-
-            let label: string;
-            if (Math.abs(val.im) > 1e-6) {
-              const mod = Math.hypot(val.re, val.im);
-              const deg = (Math.atan2(val.im, val.re) * 180) / Math.PI;
-              label = `x=${wx.toFixed(2)} → ${formatComplex(val.re, val.im)}  (|z|=${mod.toFixed(2)}, θ=${deg.toFixed(0)}°)`;
-            } else {
-              label = `(${wx.toFixed(3)}, ${val.re.toFixed(3)})`;
-            }
-
-            bestSnap = {
-              sx: mousePos.sx,
-              sy: snapSy,
-              wx,
-              wy: snapWy,
-              label,
-              color: curve.color,
-            };
-          }
-        }
-      }
-
-      if (bestSnap) {
-        // Crosshair guide
-        ctx.strokeStyle = 'rgba(226, 232, 240, 0.25)';
-        ctx.setLineDash([4, 4]);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(bestSnap.sx, 0);
-        ctx.lineTo(bestSnap.sx, height);
-        ctx.moveTo(0, bestSnap.sy);
-        ctx.lineTo(width, bestSnap.sy);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Point highlight
-        ctx.fillStyle = bestSnap.color;
-        ctx.beginPath();
-        ctx.arc(bestSnap.sx, bestSnap.sy, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Tooltip pill
-        ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace';
-        const textW = ctx.measureText(bestSnap.label).width;
-        const boxW = textW + 16;
-        const boxH = 26;
-        const boxX = Math.min(Math.max(bestSnap.sx + 12, 8), width - boxW - 8);
-        const boxY = Math.max(bestSnap.sy - 34, 8);
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-        ctx.strokeStyle = bestSnap.color;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxW, boxH, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#f8fafc';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(bestSnap.label, boxX + 8, boxY + boxH / 2);
-      }
-    }
-  }, [curves, defs, scope, viewport, size, mousePos, renderOverlay]);
+    if (hover) drawHover(ctx, hover, size);
+  }, [plot, hover, renderOverlay, scope, viewport, size]);
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
