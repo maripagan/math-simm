@@ -1,0 +1,52 @@
+export interface FormulaItem {
+  id: string;
+  raw: string;
+  color: string;
+  visible: boolean;
+}
+
+export interface ParameterConfig {
+  name: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  playing: boolean;
+  direction?: 1 | -1;
+}
+
+export interface Viewport {
+  centerX: number;
+  centerY: number;
+  /** Pixels per world unit */
+  scale: number;
+}
+
+export interface NotablePoint {
+  x: number;
+  y: number;
+  type: 'root' | 'intersection';
+  label: string;
+  color: string;
+}
+
+export type PresetCategory =
+  | 'matematica'
+  | 'complexos'
+  | 'cinematica'
+  | 'circuitos-dc'
+  | 'circuitos-ac'
+  | 'gravitacao';
+
+export interface PresetScene {
+  id: string;
+  category: PresetCategory;
+  title: string;
+  description: string;
+  formulas: { raw: string; color: string }[];
+  parameters: Record<
+    string,
+    { value: number; min: number; max: number; step: number }
+  >;
+  viewport?: Viewport;
+}
