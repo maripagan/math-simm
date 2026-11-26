@@ -122,7 +122,7 @@ export function App() {
           />
         )}
         {route.view === 'math' && <MathModule />}
-        {route.view === 'physics' && <PhysicsModule year={route.year} />}
+        {route.view === 'physics' && <PhysicsModule key={route.year} year={route.year} />}
         {route.view === 'host' && <HostView />}
         {route.view === 'play' && (
           <PlayView initialRoomCode={route.initialRoomCode} />

@@ -88,8 +88,15 @@ export function useStudentRoom(options: UseStudentRoomOptions = {}) {
       setMyQuizAnswers({});
       setMyChallengeVote(null);
 
+      let moduleId: string | null = null;
       transport.onHostEvent((event) => {
         if (event.type === 'room:state') {
+          if (moduleId !== null && moduleId !== event.state.moduleId) {
+            setIsReady(false);
+            setMyQuizAnswers({});
+            setMyChallengeVote(null);
+          }
+          moduleId = event.state.moduleId;
           setRoomState(event.state);
         } else if (event.type === 'room:leaderboard') {
           setLeaderboard(event.leaderboard);

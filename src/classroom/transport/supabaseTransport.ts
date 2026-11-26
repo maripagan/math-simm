@@ -1,4 +1,5 @@
 import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { decodeClientEvent, decodeHostEvent } from './roomWire';
 import {
   ClientToHostEvent,
   HostToClientEvent,
@@ -38,12 +39,12 @@ export class SupabaseRealtimeTransport implements RoomTransport {
 
     channel
       .on('broadcast', { event: 'host_event' }, ({ payload }) => {
-        const evt = payload as HostToClientEvent;
-        this.hostHandlers.forEach((fn) => fn(evt));
+        const evt = decodeHostEvent(payload);
+        if (evt) this.hostHandlers.forEach((fn) => fn(evt));
       })
       .on('broadcast', { event: 'client_event' }, ({ payload }) => {
-        const evt = payload as ClientToHostEvent;
-        this.clientHandlers.forEach((fn) => fn(evt));
+        const evt = decodeClientEvent(payload);
+        if (evt) this.clientHandlers.forEach((fn) => fn(evt));
       });
 
     await new Promise<void>((resolve, reject) => {
@@ -60,10 +61,8 @@ export class SupabaseRealtimeTransport implements RoomTransport {
   }
 
   async disconnect(): Promise<void> {
-    if (this.channel) {
-      await this.client.removeChannel(this.channel);
-      this.channel = null;
-    }
+    this.channel = null;
+    await this.client.removeAllChannels();
     this.hostHandlers.clear();
     this.clientHandlers.clear();
   }

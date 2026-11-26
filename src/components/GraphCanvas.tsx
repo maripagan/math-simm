@@ -18,16 +18,7 @@ import {
   worldToScreenX,
   worldToScreenY,
 } from '../engine/viewport';
-import { NotablePoint, Viewport } from '../types';
-
-export interface CanvasOverlayHelpers {
-  width: number;
-  height: number;
-  viewport: Viewport;
-  scope: Record<string, unknown>;
-  toScreenX: (wx: number) => number;
-  toScreenY: (wy: number) => number;
-}
+import { NotablePoint, RenderOverlay, Viewport } from '../types';
 
 interface GraphCanvasProps {
   curves: ActiveCurve[];
@@ -35,10 +26,7 @@ interface GraphCanvasProps {
   scope: Record<string, unknown>;
   viewport: Viewport;
   onViewportChange: (vp: Viewport) => void;
-  renderOverlay?: (
-    ctx: CanvasRenderingContext2D,
-    helpers: CanvasOverlayHelpers,
-  ) => void;
+  renderOverlay?: RenderOverlay;
   /** Optional interactive drag handler in world coordinates. Return true to consume drag instead of panning. */
   onDragWorld?: (wx: number, wy: number, phase: 'down' | 'move') => boolean;
 }

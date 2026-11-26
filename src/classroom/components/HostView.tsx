@@ -19,18 +19,15 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMemo, useState } from 'react';
-import { GraphCanvas } from '../../components/GraphCanvas';
 import { KatexPreview } from '../../components/KatexPreview';
 import { ParameterList } from '../../components/ParameterList';
-import { TimeControls } from '../../components/TimeControls';
 import { CLASSROOM_MODULES } from '../../data/modules';
-import { PhysicsVisualCard } from '../../modules/physics/visuals/PhysicsVisualCard';
+import { EXPERIMENTS_BY_ID } from '../../modules/physics/physicsExperiments';
+import { SceneStage } from '../../scene/SceneStage';
 import { useHostRoom } from '../hooks/useHostRoom';
+import { STEPS } from '../Lesson';
 import { QuizOptionId, StepMode } from '../schemas';
-import {
-  ChallengeOverlayConfig,
-  useSimulationBridge,
-} from '../useSimulationBridge';
+import { useSimulationBridge } from '../useSimulationBridge';
 
 const STEP_LABELS: Record<StepMode, string> = {
   lobby_story: '1. Lobby & História',
@@ -41,15 +38,6 @@ const STEP_LABELS: Record<StepMode, string> = {
   report: '6. Relatório Pós-Aula',
 };
 
-const STEP_ORDER: StepMode[] = [
-  'lobby_story',
-  'quiz',
-  'simulation',
-  'quiz_prediction',
-  'challenge',
-  'report',
-];
-
 const OPTION_COLORS: Record<QuizOptionId, string> = {
   A: '#0ea5e9',
   B: '#ec4899',
@@ -58,9 +46,6 @@ const OPTION_COLORS: Record<QuizOptionId, string> = {
 };
 
 export function HostView() {
-  const [selectedModuleId, setSelectedModuleId] = useState<string>(
-    CLASSROOM_MODULES[0].id,
-  );
   const [tagFilter, setTagFilter] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const [drawerTab, setDrawerTab] = useState<'theory' | 'guide' | 'bridges'>(
@@ -81,23 +66,7 @@ export function HostView() {
     prevStep,
     revealCurrentQuiz,
     executeChallengeWinner,
-  } = useHostRoom({ initialModuleId: selectedModuleId });
-
-  const challengeOverlay: ChallengeOverlayConfig | undefined = useMemo(() => {
-    if (
-      roomState.mode === 'challenge' &&
-      module?.engineId === 'projectile'
-    ) {
-      return {
-        type: 'projectile-wall-target',
-        wallX: 40,
-        wallHeight: 15,
-        targetX: 80,
-        targetTolerance: 3,
-      };
-    }
-    return undefined;
-  }, [roomState.mode, module?.engineId]);
+  } = useHostRoom();
 
   const shouldPlaySim =
     roomState.mode === 'simulation' ||
@@ -107,11 +76,18 @@ export function HostView() {
       roomState.challengeVoteState?.status === 'executed');
 
   const sim = useSimulationBridge({
-    engineId: module?.engineId ?? 'ideal-gas',
-    externalPreset: roomState.enginePreset,
-    challengeOverlay,
-    initialPlaying: shouldPlaySim,
+    experiment: EXPERIMENTS_BY_ID[module.engineId],
+    preset: roomState.enginePreset,
+    showChallenge: roomState.mode === 'challenge',
+    playing: shouldPlaySim,
   });
+  const stage = (
+    <SceneStage
+      scene={sim.scene}
+      overlay={sim.overlay}
+      card={sim.experiment.renderCard?.(sim.scene.scope)}
+    />
+  );
 
   const joinUrl = useMemo(() => {
     const base = `${window.location.origin}${window.location.pathname}`;
@@ -130,7 +106,7 @@ export function HostView() {
   }, [tagFilter]);
 
   const activeQuestion = useMemo(() => {
-    if (!module || !roomState.quizState) return undefined;
+    if (!roomState.quizState) return undefined;
     return module.quizzes.find((q) => q.id === roomState.quizState?.questionId);
   }, [module, roomState.quizState]);
 
@@ -145,19 +121,6 @@ export function HostView() {
     const v = roomState.challengeVoteState.votesCount;
     return v['1'] + v['2'] + v['3'];
   }, [roomState.challengeVoteState]);
-
-  const handleSelectModule = (id: string) => {
-    setSelectedModuleId(id);
-    selectModule(id);
-  };
-
-  if (!module) {
-    return (
-      <div className="classroom-empty">
-        Módulo de sala de aula não encontrado.
-      </div>
-    );
-  }
 
   return (
     <div className="classroom-host">
@@ -185,7 +148,7 @@ export function HostView() {
         </div>
 
         <div className="host-stepper">
-          {STEP_ORDER.map((mode, idx) => (
+          {STEPS.map((mode, idx) => (
             <button
               key={mode}
               className={`step-dot ${
@@ -229,7 +192,7 @@ export function HostView() {
 
           <button
             className="btn-primary-host"
-            disabled={roomState.currentStepIndex >= STEP_ORDER.length - 1}
+            disabled={roomState.currentStepIndex >= STEPS.length - 1}
             onClick={nextStep}
           >
             <span>Avançar</span>
@@ -261,7 +224,7 @@ export function HostView() {
                     className={`module-card-btn ${
                       mod.id === module.id ? 'active' : ''
                     }`}
-                    onClick={() => handleSelectModule(mod.id)}
+                    onClick={() => selectModule(mod.id)}
                   >
                     <span className="mod-cat">{mod.category}</span>
                     <strong>{mod.title}</strong>
@@ -445,28 +408,7 @@ export function HostView() {
               {roomState.mode === 'quiz_prediction' && (
                 <div className="quiz-engine-side">
                   <div className="canvas-stage">
-                    <GraphCanvas
-                      curves={sim.activeCurves}
-                      defs={sim.auxDefs}
-                      scope={sim.scope}
-                      viewport={sim.viewport}
-                      onViewportChange={sim.setViewport}
-                      renderOverlay={sim.overlayFn}
-                    />
-                    {sim.experiment.visualCard && (
-                      <PhysicsVisualCard
-                        type={sim.experiment.visualCard}
-                        scope={sim.scope}
-                      />
-                    )}
-                    <TimeControls
-                      t={sim.t}
-                      playing={sim.timePlaying}
-                      speed={sim.timeSpeed}
-                      onTogglePlay={sim.togglePlay}
-                      onReset={sim.resetTime}
-                      onSpeedChange={sim.setTimeSpeed}
-                    />
+                    {stage}
                   </div>
                 </div>
               )}
@@ -477,28 +419,7 @@ export function HostView() {
         {roomState.mode === 'simulation' && (
           <div className="host-sim-layout">
             <main className="canvas-stage host-sim-canvas">
-              <GraphCanvas
-                curves={sim.activeCurves}
-                defs={sim.auxDefs}
-                scope={sim.scope}
-                viewport={sim.viewport}
-                onViewportChange={sim.setViewport}
-                renderOverlay={sim.overlayFn}
-              />
-              {sim.experiment.visualCard && (
-                <PhysicsVisualCard
-                  type={sim.experiment.visualCard}
-                  scope={sim.scope}
-                />
-              )}
-              <TimeControls
-                t={sim.t}
-                playing={sim.timePlaying}
-                speed={sim.timeSpeed}
-                onTogglePlay={sim.togglePlay}
-                onReset={sim.resetTime}
-                onSpeedChange={sim.setTimeSpeed}
-              />
+              {stage}
 
               <button
                 className="drawer-toggle-fab"
@@ -574,8 +495,10 @@ export function HostView() {
                         <p>{module.teacherGuide.commonPitfall}</p>
                       </div>
                       <ParameterList
-                        parameters={sim.parameters}
-                        onUpdate={sim.updateParameter}
+                        parameters={sim.scene.state.parameters}
+                        onUpdate={(name, patch) =>
+                          sim.scene.apply({ type: 'updateParameter', name, patch })
+                        }
                       />
                     </div>
                   )}
@@ -668,8 +591,6 @@ export function HostView() {
                   className="btn-reveal-big"
                   onClick={() => {
                     executeChallengeWinner();
-                    sim.setTimePlaying(true);
-                    sim.resetTime();
                   }}
                 >
                   <Play size={18} />
@@ -700,28 +621,7 @@ export function HostView() {
 
             <div className="challenge-engine-panel">
               <div className="canvas-stage">
-                <GraphCanvas
-                  curves={sim.activeCurves}
-                  defs={sim.auxDefs}
-                  scope={sim.scope}
-                  viewport={sim.viewport}
-                  onViewportChange={sim.setViewport}
-                  renderOverlay={sim.overlayFn}
-                />
-                {sim.experiment.visualCard && (
-                  <PhysicsVisualCard
-                    type={sim.experiment.visualCard}
-                    scope={sim.scope}
-                  />
-                )}
-                <TimeControls
-                  t={sim.t}
-                  playing={sim.timePlaying}
-                  speed={sim.timeSpeed}
-                  onTogglePlay={sim.togglePlay}
-                  onReset={sim.resetTime}
-                  onSpeedChange={sim.setTimeSpeed}
-                />
+                {stage}
               </div>
             </div>
           </div>

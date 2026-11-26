@@ -1,5 +1,3 @@
-import { Viewport } from '../../types';
-
 export type YearLevel = 1 | 2 | 3;
 
 export type PhysicsGroup =
@@ -16,36 +14,29 @@ export type PhysicsGroup =
   | 'Magnetismo'
   | 'Física Moderna';
 
-export type PhysicsExperimentId =
-  // 1º Ano
-  | 'mruv'
-  | 'projectile'
-  | 'rotational'
-  | 'inclined-plane'
-  | 'energy-conservation'
-  | 'hydrostatics'
-  | 'kepler'
-  // 2º Ano
-  | 'ideal-gas'
-  | 'snell-optics'
-  | 'thin-lens'
-  | 'doppler-wave'
-  // 3º Ano
-  | 'coulomb-electrostatics'
-  | 'dc-rc'
-  | 'ac-rlc'
-  | 'lorentz-magnetism'
-  | 'faraday-induction'
-  | 'photoelectric'
-  | 'radioactive-decay'
-  | 'relativity-lorentz';
+export const PHYSICS_EXPERIMENT_IDS = [
+  'mruv',
+  'projectile',
+  'rotational',
+  'inclined-plane',
+  'energy-conservation',
+  'hydrostatics',
+  'kepler',
+  'ideal-gas',
+  'snell-optics',
+  'thin-lens',
+  'doppler-wave',
+  'coulomb-electrostatics',
+  'dc-rc',
+  'ac-rlc',
+  'lorentz-magnetism',
+  'faraday-induction',
+  'photoelectric',
+  'radioactive-decay',
+  'relativity-lorentz',
+] as const;
 
-export type PhysicsVisualCardType =
-  | 'dc-rc'
-  | 'ac-rlc'
-  | 'energy'
-  | 'hydrostatics'
-  | 'carnot';
+export type PhysicsExperimentId = (typeof PHYSICS_EXPERIMENT_IDS)[number];
 
 export interface VariableGlossaryItem {
   symbol: string;
@@ -68,23 +59,4 @@ export interface ExperimentTheory {
   observations: string[];
   scenarios: GuidedScenario[];
   commonPitfall: string;
-}
-
-export interface PhysicsExperiment {
-  id: PhysicsExperimentId;
-  year: YearLevel;
-  group: PhysicsGroup;
-  title: string;
-  shortTitle: string;
-  summary: string;
-  keyFormulaTex: string;
-  legendItems: Array<{ label: string; color: string }>;
-  formulas: Array<{ raw: string; color: string }>;
-  parameters: Record<
-    string,
-    { value: number; min: number; max: number; step: number }
-  >;
-  viewport: Viewport;
-  visualCard?: PhysicsVisualCardType;
-  theory: ExperimentTheory;
 }

@@ -1,3 +1,4 @@
+import { decodeClientEvent, decodeHostEvent } from './roomWire';
 import {
   ClientToHostEvent,
   HostToClientEvent,
@@ -7,7 +8,6 @@ import {
 interface Envelope {
   direction: 'host_to_client' | 'client_to_host';
   payload: HostToClientEvent | ClientToHostEvent;
-  ts: number;
 }
 
 const STORAGE_STATE_PREFIX = 'mathsim:classroom:state:';
@@ -33,7 +33,7 @@ export class LocalBroadcastTransport implements RoomTransport {
 
     if (typeof BroadcastChannel !== 'undefined') {
       this.channel = new BroadcastChannel(channelName);
-      this.channel.onmessage = (msg: MessageEvent<Envelope>) => {
+      this.channel.onmessage = (msg: MessageEvent<unknown>) => {
         this.dispatchEnvelope(msg.data);
       };
     }
@@ -44,8 +44,7 @@ export class LocalBroadcastTransport implements RoomTransport {
         return;
       }
       try {
-        const envelope = JSON.parse(e.newValue) as Envelope;
-        this.dispatchEnvelope(envelope);
+        this.dispatchEnvelope(JSON.parse(e.newValue));
       } catch {
         // Ignora mensagens malformadas
       }
@@ -59,8 +58,8 @@ export class LocalBroadcastTransport implements RoomTransport {
           `${STORAGE_STATE_PREFIX}${this.roomCode}`,
         );
         if (cached) {
-          const event = JSON.parse(cached) as HostToClientEvent;
-          if (event.type === 'room:state') {
+          const event = decodeHostEvent(JSON.parse(cached));
+          if (event?.type === 'room:state') {
             this.hostHandlers.forEach((fn) => fn(event));
           }
         }
@@ -104,7 +103,6 @@ export class LocalBroadcastTransport implements RoomTransport {
     this.emitEnvelope({
       direction: 'host_to_client',
       payload: event,
-      ts: Date.now(),
     });
   }
 
@@ -112,7 +110,6 @@ export class LocalBroadcastTransport implements RoomTransport {
     this.emitEnvelope({
       direction: 'client_to_host',
       payload: event,
-      ts: Date.now(),
     });
   }
 
@@ -145,14 +142,15 @@ export class LocalBroadcastTransport implements RoomTransport {
     }
   }
 
-  private dispatchEnvelope(envelope: Envelope): void {
-    if (!envelope || !envelope.payload) return;
-    if (envelope.direction === 'host_to_client') {
-      const evt = envelope.payload as HostToClientEvent;
-      this.hostHandlers.forEach((fn) => fn(evt));
-    } else if (envelope.direction === 'client_to_host') {
-      const evt = envelope.payload as ClientToHostEvent;
-      this.clientHandlers.forEach((fn) => fn(evt));
+  private dispatchEnvelope(raw: unknown): void {
+    if (typeof raw !== 'object' || raw === null) return;
+    const { direction, payload } = raw as Partial<Envelope>;
+    if (direction === 'host_to_client') {
+      const evt = decodeHostEvent(payload);
+      if (evt) this.hostHandlers.forEach((fn) => fn(evt));
+    } else if (direction === 'client_to_host') {
+      const evt = decodeClientEvent(payload);
+      if (evt) this.clientHandlers.forEach((fn) => fn(evt));
     }
   }
 }

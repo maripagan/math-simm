@@ -22,6 +22,20 @@ export interface Viewport {
   scale: number;
 }
 
+export interface CanvasOverlayHelpers {
+  width: number;
+  height: number;
+  viewport: Viewport;
+  scope: Record<string, unknown>;
+  toScreenX: (wx: number) => number;
+  toScreenY: (wy: number) => number;
+}
+
+export type RenderOverlay = (
+  ctx: CanvasRenderingContext2D,
+  h: CanvasOverlayHelpers,
+) => void;
+
 export interface NotablePoint {
   x: number;
   y: number;

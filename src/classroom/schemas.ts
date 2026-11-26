@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PHYSICS_EXPERIMENT_IDS } from '../modules/physics/types';
 
 export const StepModeSchema = z.enum([
   'lobby_story',
@@ -91,7 +92,7 @@ export type ModuleCategory = z.infer<typeof ModuleCategorySchema>;
 
 export const ClassroomModuleSchema = z.object({
   id: z.string().min(1),
-  engineId: z.string().min(1),
+  engineId: z.enum(PHYSICS_EXPERIMENT_IDS),
   title: z.string().min(1),
   category: ModuleCategorySchema,
   themeTags: z.array(z.string().min(1)).min(1),
