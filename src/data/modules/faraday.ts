@@ -103,7 +103,6 @@ export const faradayModule: ClassroomModule = ClassroomModuleSchema.parse({
   collectiveChallenge: {
     goalDescription:
       'Gerar um pico de tensão acima de 12 V (ε_max = N·B·A·ω > 12 V) para acender o holofote da usina.',
-    targetValidationRule: 'N * B * A * w > 12',
     votingOptions: [
       {
         id: '1',

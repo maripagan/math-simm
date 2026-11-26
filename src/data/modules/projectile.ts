@@ -104,7 +104,6 @@ export const projectileModule: ClassroomModule = ClassroomModuleSchema.parse({
   collectiveChallenge: {
     goalDescription:
       'Acertar o alvo a ~80 m de distância desviando de um muro central de 15 m de altura (em x = 40 m).',
-    targetValidationRule: 'range >= 77 && range <= 83 && heightAt40m > 15',
     votingOptions: [
       {
         id: '1',

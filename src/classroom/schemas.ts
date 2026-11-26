@@ -59,7 +59,6 @@ export const InterdisciplinaryBridgeSchema = z.object({
   subject: InterdisciplinarySubjectSchema,
   themeTag: z.string().min(1),
   connectionHook: z.string().min(1),
-  suggestedNextModuleId: z.string().optional(),
   bridgeQuestion: QuizQuestionSchema.optional(),
 });
 export type InterdisciplinaryBridge = z.infer<
@@ -68,7 +67,6 @@ export type InterdisciplinaryBridge = z.infer<
 
 export const CollectiveChallengeSchema = z.object({
   goalDescription: z.string().min(1),
-  targetValidationRule: z.string().min(1),
   votingOptions: z
     .array(
       z.object({
@@ -93,7 +91,7 @@ export type ModuleCategory = z.infer<typeof ModuleCategorySchema>;
 
 export const ClassroomModuleSchema = z.object({
   id: z.string().min(1),
-  engineId: z.string().min(1), // ID correspondente no engines_registry.json / PHYSICS_EXPERIMENTS
+  engineId: z.string().min(1),
   title: z.string().min(1),
   category: ModuleCategorySchema,
   themeTags: z.array(z.string().min(1)).min(1),
@@ -101,7 +99,6 @@ export const ClassroomModuleSchema = z.object({
     year: z.string().min(1),
     figure: z.string().min(1),
     shortText: z.string().min(1).max(320),
-    visualAssetUrl: z.string().optional(),
   }),
   teacherGuide: z.object({
     openingQuestion: z.string().min(1),
@@ -120,13 +117,9 @@ export const ClassroomModuleSchema = z.object({
 });
 export type ClassroomModule = z.infer<typeof ClassroomModuleSchema>;
 
-// Alias compatível com a nomenclatura da especificação
-export type PhysicsClassroomModule = ClassroomModule;
-
 export const RoomStateSchema = z.object({
   roomCode: z.string().min(3),
   moduleId: z.string().min(1),
-  playlistId: z.string().optional(),
   currentStepIndex: z.number().int().min(0),
   mode: StepModeSchema,
   quizState: z
@@ -159,52 +152,3 @@ export const RoomStateSchema = z.object({
   updatedAt: z.number(),
 });
 export type RoomState = z.infer<typeof RoomStateSchema>;
-
-// --- Schemas Preparatórios V2 (Trilhas Interdisciplinares & Analytics) ---
-
-export const InterdisciplinaryPlaylistSchema = z.object({
-  playlistId: z.string().min(1),
-  title: z.string().min(1),
-  themeTag: z.string().min(1),
-  steps: z.array(
-    z.object({
-      order: z.number().int().min(1),
-      moduleId: z.string().min(1),
-      highlightBridgeSubject: InterdisciplinarySubjectSchema.optional(),
-      passOutputVariableToNext: z
-        .object({
-          fromVariable: z.string().min(1),
-          toPresetKey: z.string().min(1),
-        })
-        .optional(),
-    }),
-  ),
-});
-export type InterdisciplinaryPlaylist = z.infer<
-  typeof InterdisciplinaryPlaylistSchema
->;
-
-export const StudentRecordSchema = z.object({
-  studentId: z.string().min(1),
-  classId: z.string().min(1),
-  displayName: z.string().min(1),
-  sessionMetrics: z.array(
-    z.object({
-      sessionId: z.string(),
-      moduleId: z.string(),
-      date: z.string(),
-      quizAccuracy: z.number().min(0).max(1),
-      participatedInChallenge: z.boolean(),
-    }),
-  ),
-  schoolGrades: z.array(
-    z.object({
-      assessmentId: z.string(),
-      title: z.string(),
-      date: z.string(),
-      score: z.number().min(0).max(10),
-      relatedCategory: ModuleCategorySchema.optional(),
-    }),
-  ),
-});
-export type StudentRecord = z.infer<typeof StudentRecordSchema>;

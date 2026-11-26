@@ -104,7 +104,6 @@ export const carnotModule: ClassroomModule = ClassroomModuleSchema.parse({
   collectiveChallenge: {
     goalDescription:
       'Atingir rendimento superior a 60% sem ultrapassar 800 K na fonte quente (TQ).',
-    targetValidationRule: 'TQ <= 800 && (1 - TF / TQ) > 0.6',
     votingOptions: [
       {
         id: '1',

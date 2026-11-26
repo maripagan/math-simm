@@ -4,7 +4,7 @@ Este documento centraliza o **contexto pedagógico, histórico, interdisciplinar
 
 O objetivo é servir como **fonte de verdade** para:
 - Criar os roteiros de aula pendentes em `src/data/modules/*.ts` seguindo o contrato `ClassroomModuleSchema` (`src/classroom/schemas.ts`);
-- Alimentar prompts de geração de aulas via IA (V2) respeitando rigorosamente os parâmetros e limites reais de `src/data/engines_registry.json`;
+- Alimentar prompts de geração de aulas via IA (V2) respeitando rigorosamente os parâmetros e limites reais de `src/modules/physics/experiments/` e `src/modules/math/mathPresets.ts`;
 - Estruturar **Trilhas Interdisciplinares (Playlists V2)** conectando múltiplos módulos por `themeTags`.
 
 > **Nota:** Este arquivo é estritamente um guia de referência. Nenhuma alteração de código foi feita ainda.
@@ -17,11 +17,11 @@ O objetivo é servir como **fonte de verdade** para:
    - Hoje o enum aceita apenas: `'Mecânica' | 'Termodinâmica' | 'Óptica' | 'Eletromagnetismo' | 'Química'`.
    - Para cadastrar todos os módulos abaixo, será necessário incluir: `'Ondulatória'`, `'Física Moderna'` e `'Matemática'`.
 2. **Parâmetro fixo em `photoelectric`**:
-   - Em `engines_registry.json`, `h` tem `min: 4.14, max: 4.14` (constante de Planck em `eV·fs`). Presets devem manter `h: 4.14` fixo e variar apenas `phi` e `fLight`.
+   - No experimento `photoelectric`, `h` tem `min: 4.14, max: 4.14` (constante de Planck em `eV·fs`). Presets devem manter `h: 4.14` fixo e variar apenas `phi` e `fLight`.
 3. **Preset sem sliders em `inequality-region`**:
-   - Atualmente `inequality-region` tem `parameters: {}` em `engines_registry.json`. Para suportar `enginePresetBefore/After` e `collectiveChallenge` no Modo Sala de Aula, será preciso parametrizar os coeficientes das inequações (ex.: `a`, `b`, `c`) ou habilitar troca de fórmulas via preset.
+   - Atualmente `inequality-region` tem `parameters: {}` no experimento. Para suportar `enginePresetBefore/After` e `collectiveChallenge` no Modo Sala de Aula, será preciso parametrizar os coeficientes das inequações (ex.: `a`, `b`, `c`) ou habilitar troca de fórmulas via preset.
 4. **Suporte do `useSimulationBridge` para Matemática**:
-   - Os 5 presets de Matemática Pura estão em `src/modules/math/mathPresets.ts` (e já catalogados no `engines_registry.json`). Ao criar seus roteiros de aula, verificar se a ponte do Modo Sala de Aula carrega presets de `MATH_PRESETS` além de `PHYSICS_EXPERIMENTS`.
+   - Os 5 presets de Matemática Pura estão em `src/modules/math/mathPresets.ts`. Ao criar seus roteiros de aula, verificar se a ponte do Modo Sala de Aula carrega presets de `MATH_PRESETS` além de `PHYSICS_EXPERIMENTS`.
 
 ---
 
@@ -428,7 +428,7 @@ O objetivo é servir como **fonte de verdade** para:
 ### 22. Região de Desigualdades (Inequações & Programação Linear) — `inequality-region`
 - **Status:** Preset pronto em `mathPresets.ts`; **falta criar roteiro de aula** (`src/data/modules/inequalityRegion.ts`).
 - **Fórmulas do preset:** `y <= -0.3 * x^2 + 3` e `y > sin(x)`.
-- **Parâmetros da engine:** Atualmente `{}` em `engines_registry.json` *(nota técnica: parametrizar coeficientes ao criar o roteiro de aula se quiser sliders dinâmicos no desafio coletivo)*.
+- **Parâmetros da engine:** Atualmente `{}` no experimento *(nota técnica: parametrizar coeficientes ao criar o roteiro de aula se quiser sliders dinâmicos no desafio coletivo)*.
 - **Fórmula central:** $y \le f(x)$ (fronteira contínua) $\cap\; y > g(x)$ (fronteira tracejada).
 - **Gancho histórico:** 1947 — George Dantzig criou o método Simplex para Programação Linear, usando interseções de regiões de desigualdades (região viável) para otimizar logística aérea, rotas e alocação de recursos.
 - **Pergunta de abertura:** "Na vida real, quando uma empresa decide quantos produtos fabricar com orçamento e estoque limitados, ela resolve uma igualdade ou um sistema de desigualdades?"
@@ -513,7 +513,7 @@ O objetivo é servir como **fonte de verdade** para:
 
 ## F. Sugestões de Trilhas Interdisciplinares (Playlists V2)
 
-Para aproveitar o `InterdisciplinaryPlaylistSchema` (`src/classroom/schemas.ts`), estas 5 trilhas conectam módulos já mapeados:
+Ideia para uma versão futura, ainda sem schema no código: estas 5 trilhas conectam módulos já mapeados:
 
 1. **Trilha "Da Terra às Estrelas" (Corrida Espacial & GPS):**
    `projectile` → `rotational` → `kepler` → `relativity-lorentz`

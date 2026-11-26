@@ -98,7 +98,6 @@ export const snellModule: ClassroomModule = ClassroomModuleSchema.parse({
   collectiveChallenge: {
     goalDescription:
       'Prender o feixe de laser dentro do bloco de Vidro (n2 = 1,5) para o Ar (n1 = 1,0) usando Reflexão Interna Total (luz saindo de baixo para cima).',
-    targetValidationRule: 'dir === -1 && n2 === 1.5 && n1 === 1.0 && ang1 > 0.73',
     votingOptions: [
       {
         id: '1',

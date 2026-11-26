@@ -99,7 +99,6 @@ export const keplerModule: ClassroomModule = ClassroomModuleSchema.parse({
   collectiveChallenge: {
     goalDescription:
       'Colocar o satélite em uma órbita circular estável (excentricidade nula) sem esticar demais nem escapar da gravidade.',
-    targetValidationRule: 'ecc === 0 && a >= 2.0 && a <= 4.5',
     votingOptions: [
       {
         id: '1',

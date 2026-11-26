@@ -30,13 +30,7 @@ export interface NotablePoint {
   color: string;
 }
 
-export type PresetCategory =
-  | 'matematica'
-  | 'complexos'
-  | 'cinematica'
-  | 'circuitos-dc'
-  | 'circuitos-ac'
-  | 'gravitacao';
+export type PresetCategory = 'matematica' | 'complexos';
 
 export interface PresetScene {
   id: string;
