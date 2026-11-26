@@ -101,7 +101,7 @@ export const YEAR1_EXPERIMENTS: PhysicsExperiment[] = [
       { raw: 'y <= 0', color: '#334155' },
     ],
     parameters: {
-      v0: { value: 12, min: 3, max: 24, step: 0.5 },
+      v0: { value: 12, min: 3, max: 35, step: 0.5 },
       ang: { value: 0.9, min: 0.15, max: 1.45, step: 0.05 },
       g: { value: 9.8, min: 1.6, max: 20, step: 0.2 },
     },

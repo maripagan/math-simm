@@ -1,10 +1,12 @@
-import { ArrowRight, Atom, Lock, Sigma } from 'lucide-react';
+import { ArrowRight, Atom, Lock, Presentation, Sigma, Smartphone } from 'lucide-react';
 import { PHYSICS_EXPERIMENTS } from '../modules/physics/physicsExperiments';
 import { YearLevel } from '../modules/physics/types';
 
 interface HomePageProps {
   onOpenMath: () => void;
   onOpenPhysicsYear: (year: YearLevel) => void;
+  onOpenClassroomHost: () => void;
+  onOpenClassroomPlay: () => void;
 }
 
 interface PhysicsYearCard {
@@ -42,7 +44,12 @@ const YEAR_MODULES: PhysicsYearCard[] = [
   },
 ];
 
-export function HomePage({ onOpenMath, onOpenPhysicsYear }: HomePageProps) {
+export function HomePage({
+  onOpenMath,
+  onOpenPhysicsYear,
+  onOpenClassroomHost,
+  onOpenClassroomPlay,
+}: HomePageProps) {
   return (
     <div className="home-page">
       <div className="home-container">
@@ -139,6 +146,35 @@ export function HomePage({ onOpenMath, onOpenPhysicsYear }: HomePageProps) {
             </div>
           </section>
         </div>
+
+        {/* Frente 3: Modo Sala de Aula Interativo (V1) */}
+        <section className="home-classroom-banner">
+          <div className="home-classroom-info">
+            <span className="front-eyebrow">Segunda Tela · Ao Vivo</span>
+            <h2>Modo Sala de Aula Interativo (V1)</h2>
+            <p>
+              Conduza aulas no projetor com QR Code, quizzes de intuição e
+              previsão, prova real na engine, desafio coletivo e relatório em
+              PDF — sem exigir cadastro.
+            </p>
+          </div>
+          <div className="home-classroom-actions">
+            <button
+              className="btn-primary-host"
+              onClick={onOpenClassroomHost}
+            >
+              <Presentation size={16} />
+              <span>Criar Sala (Professor)</span>
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={onOpenClassroomPlay}
+            >
+              <Smartphone size={16} />
+              <span>Entrar na Sala (Aluno)</span>
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
