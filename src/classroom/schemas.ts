@@ -87,7 +87,9 @@ export const ModuleCategorySchema = z.enum([
   'Mecânica',
   'Termodinâmica',
   'Óptica',
+  'Ondulatória',
   'Eletromagnetismo',
+  'Física Moderna',
   'Química',
 ]);
 export type ModuleCategory = z.infer<typeof ModuleCategorySchema>;

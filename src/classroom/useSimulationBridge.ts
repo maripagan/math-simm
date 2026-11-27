@@ -110,7 +110,20 @@ function renderChallengeOverlay(
   }
 }
 
+const STATISTICS_LAB_SCENE = {
+  id: 'statistics-lab' as const,
+  formulas: [] as Array<{ raw: string; color: string }>,
+  parameters: {
+    meanA: { value: 25, min: 10, max: 40, step: 0.5 },
+    stdA: { value: 3.0, min: 1, max: 12, step: 0.5 },
+    meanB: { value: 25, min: 10, max: 40, step: 0.5 },
+    stdB: { value: 8.5, min: 1, max: 12, step: 0.5 },
+    bins: { value: 10, min: 5, max: 20, step: 1 },
+  },
+};
+
 export function getSimulationScene(id: string) {
+  if (id === 'statistics-lab') return STATISTICS_LAB_SCENE;
   const scene = PHYSICS_EXPERIMENTS.find((experiment) => experiment.id === id) ??
     MATH_PRESETS.find((preset) => preset.id === id);
   if (!scene) throw new Error(`Cena ausente: ${id}`);

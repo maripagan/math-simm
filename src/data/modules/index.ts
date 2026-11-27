@@ -1,18 +1,28 @@
 import { ClassroomModule } from '../../classroom/schemas';
 import { carnotModule } from './carnot';
+import { dopplerModule } from './doppler';
 import { eulerModule } from './euler';
 import { faradayModule } from './faraday';
 import { keplerModule } from './kepler';
+import { mruvModule } from './mruv';
+import { parabolaTangentModule } from './parabolaTangent';
+import { photoelectricModule } from './photoelectric';
 import { projectileModule } from './projectile';
 import { snellModule } from './snell';
+import { statisticsDispersionModule } from './statistics';
 
 export const CLASSROOM_MODULES: ClassroomModule[] = [
+  projectileModule,
+  mruvModule,
+  keplerModule,
   carnotModule,
   snellModule,
+  dopplerModule,
   faradayModule,
-  keplerModule,
-  projectileModule,
+  photoelectricModule,
   eulerModule,
+  parabolaTangentModule,
+  statisticsDispersionModule,
 ];
 
 export function getClassroomModuleById(
@@ -35,9 +45,14 @@ export function getClassroomModulesByThemeTag(tag: string): ClassroomModule[] {
 
 export {
   carnotModule,
+  dopplerModule,
   eulerModule,
   faradayModule,
   keplerModule,
+  mruvModule,
+  parabolaTangentModule,
+  photoelectricModule,
   projectileModule,
   snellModule,
+  statisticsDispersionModule,
 };

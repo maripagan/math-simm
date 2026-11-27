@@ -25,6 +25,9 @@ import { KatexPreview } from '../../components/KatexPreview';
 import { ParameterList } from '../../components/ParameterList';
 import { TimeControls } from '../../components/TimeControls';
 import { CLASSROOM_MODULES, getClassroomModuleById } from '../../data/modules';
+import { resolveStatisticsState } from '../../modules/statistics/statisticsPresets';
+import { StatisticsStage } from '../../modules/statistics/StatisticsStage';
+import '../../modules/statistics/statistics.css';
 import { EULER_PARAMETERS, EULER_PRESET_ID } from '../../modules/math/mathPresets';
 import { PhysicsVisualCard } from '../../modules/physics/visuals/PhysicsVisualCard';
 import { useHostRoom } from '../hooks/useHostRoom';
@@ -113,6 +116,7 @@ export function HostView({ initialModuleId }: HostViewProps) {
       roomState.challengeVoteState?.status === 'executed');
 
   const scene = getSimulationScene((module ?? initialModule).engineId);
+  const isStatisticsLab = scene.id === 'statistics-lab';
   const experiment = 'theory' in scene ? scene : undefined;
   const glossary = experiment?.theory.variables ?? (scene.id === EULER_PRESET_ID ? EULER_PARAMETERS : undefined);
   const sim = useSimulationBridge({
@@ -121,6 +125,19 @@ export function HostView({ initialModuleId }: HostViewProps) {
     challengeOverlay,
     initialPlaying: shouldPlaySim,
   });
+
+  const statisticsStageState = useMemo(() => {
+    const base = resolveStatisticsState('enem-2025-q157', roomState.enginePreset);
+    if (!isStatisticsLab) return base;
+    return {
+      ...base,
+      meanA: sim.parameters.meanA?.value ?? base.meanA,
+      stdA: sim.parameters.stdA?.value ?? base.stdA,
+      meanB: sim.parameters.meanB?.value ?? base.meanB,
+      stdB: sim.parameters.stdB?.value ?? base.stdB,
+      bins: sim.parameters.bins?.value ?? base.bins,
+    };
+  }, [isStatisticsLab, roomState.enginePreset, sim.parameters]);
 
   const joinUrl = useMemo(() => {
     const base = `${window.location.origin}${window.location.pathname}`;
@@ -473,30 +490,40 @@ export function HostView({ initialModuleId }: HostViewProps) {
               {roomState.mode === 'quiz_prediction' && (
                 <div className="quiz-engine-side">
                   <div className="canvas-stage">
-                    <GraphCanvas
-                      curves={sim.activeCurves}
-                      defs={sim.auxDefs}
-                      scope={sim.scope}
-                      viewport={sim.viewport}
-                      defaultViewport={sim.defaultViewport}
-                      highContrast={projector}
-                      onViewportChange={sim.setViewport}
-                      renderOverlay={sim.overlayFn}
-                    />
-                    {experiment?.visualCard && (
-                      <PhysicsVisualCard
-                        type={experiment.visualCard}
-                        scope={sim.scope}
+                    {isStatisticsLab ? (
+                      <StatisticsStage
+                        state={statisticsStageState}
+                        interactive={false}
+                        highContrast={projector}
                       />
+                    ) : (
+                      <>
+                        <GraphCanvas
+                          curves={sim.activeCurves}
+                          defs={sim.auxDefs}
+                          scope={sim.scope}
+                          viewport={sim.viewport}
+                          defaultViewport={sim.defaultViewport}
+                          highContrast={projector}
+                          onViewportChange={sim.setViewport}
+                          renderOverlay={sim.overlayFn}
+                        />
+                        {experiment?.visualCard && (
+                          <PhysicsVisualCard
+                            type={experiment.visualCard}
+                            scope={sim.scope}
+                          />
+                        )}
+                        <TimeControls
+                          t={sim.t}
+                          playing={sim.timePlaying}
+                          speed={sim.timeSpeed}
+                          onTogglePlay={sim.togglePlay}
+                          onReset={sim.resetTime}
+                          onSpeedChange={sim.setTimeSpeed}
+                        />
+                      </>
                     )}
-                    <TimeControls
-                      t={sim.t}
-                      playing={sim.timePlaying}
-                      speed={sim.timeSpeed}
-                      onTogglePlay={sim.togglePlay}
-                      onReset={sim.resetTime}
-                      onSpeedChange={sim.setTimeSpeed}
-                    />
                   </div>
                 </div>
               )}
@@ -507,30 +534,40 @@ export function HostView({ initialModuleId }: HostViewProps) {
         {roomState.mode === 'simulation' && (
           <div className="host-sim-layout">
             <main className="canvas-stage host-sim-canvas">
-              <GraphCanvas
-                curves={sim.activeCurves}
-                defs={sim.auxDefs}
-                scope={sim.scope}
-                viewport={sim.viewport}
-                defaultViewport={sim.defaultViewport}
-                highContrast={projector}
-                onViewportChange={sim.setViewport}
-                renderOverlay={sim.overlayFn}
-              />
-              {experiment?.visualCard && (
-                <PhysicsVisualCard
-                  type={experiment.visualCard}
-                  scope={sim.scope}
+              {isStatisticsLab ? (
+                <StatisticsStage
+                  state={statisticsStageState}
+                  interactive={false}
+                  highContrast={projector}
                 />
+              ) : (
+                <>
+                  <GraphCanvas
+                    curves={sim.activeCurves}
+                    defs={sim.auxDefs}
+                    scope={sim.scope}
+                    viewport={sim.viewport}
+                    defaultViewport={sim.defaultViewport}
+                    highContrast={projector}
+                    onViewportChange={sim.setViewport}
+                    renderOverlay={sim.overlayFn}
+                  />
+                  {experiment?.visualCard && (
+                    <PhysicsVisualCard
+                      type={experiment.visualCard}
+                      scope={sim.scope}
+                    />
+                  )}
+                  <TimeControls
+                    t={sim.t}
+                    playing={sim.timePlaying}
+                    speed={sim.timeSpeed}
+                    onTogglePlay={sim.togglePlay}
+                    onReset={sim.resetTime}
+                    onSpeedChange={sim.setTimeSpeed}
+                  />
+                </>
               )}
-              <TimeControls
-                t={sim.t}
-                playing={sim.timePlaying}
-                speed={sim.timeSpeed}
-                onTogglePlay={sim.togglePlay}
-                onReset={sim.resetTime}
-                onSpeedChange={sim.setTimeSpeed}
-              />
 
               <button
                 hidden={projector}
@@ -732,30 +769,40 @@ export function HostView({ initialModuleId }: HostViewProps) {
 
             <div className="challenge-engine-panel">
               <div className="canvas-stage">
-                <GraphCanvas
-                  curves={sim.activeCurves}
-                  defs={sim.auxDefs}
-                  scope={sim.scope}
-                  viewport={sim.viewport}
-                  defaultViewport={sim.defaultViewport}
-                  highContrast={projector}
-                  onViewportChange={sim.setViewport}
-                  renderOverlay={sim.overlayFn}
-                />
-                {experiment?.visualCard && (
-                  <PhysicsVisualCard
-                    type={experiment.visualCard}
-                    scope={sim.scope}
+                {isStatisticsLab ? (
+                  <StatisticsStage
+                    state={statisticsStageState}
+                    interactive={false}
+                    highContrast={projector}
                   />
+                ) : (
+                  <>
+                    <GraphCanvas
+                      curves={sim.activeCurves}
+                      defs={sim.auxDefs}
+                      scope={sim.scope}
+                      viewport={sim.viewport}
+                      defaultViewport={sim.defaultViewport}
+                      highContrast={projector}
+                      onViewportChange={sim.setViewport}
+                      renderOverlay={sim.overlayFn}
+                    />
+                    {experiment?.visualCard && (
+                      <PhysicsVisualCard
+                        type={experiment.visualCard}
+                        scope={sim.scope}
+                      />
+                    )}
+                    <TimeControls
+                      t={sim.t}
+                      playing={sim.timePlaying}
+                      speed={sim.timeSpeed}
+                      onTogglePlay={sim.togglePlay}
+                      onReset={sim.resetTime}
+                      onSpeedChange={sim.setTimeSpeed}
+                    />
+                  </>
                 )}
-                <TimeControls
-                  t={sim.t}
-                  playing={sim.timePlaying}
-                  speed={sim.timeSpeed}
-                  onTogglePlay={sim.togglePlay}
-                  onReset={sim.resetTime}
-                  onSpeedChange={sim.setTimeSpeed}
-                />
               </div>
             </div>
           </div>

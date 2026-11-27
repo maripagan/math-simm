@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node -e \"import('esbuild').then(e => e.build({ entryPoints: ['src/modules/statistics/statisticsMath.test.ts'], bundle: true, platform: 'node', format: 'esm', outfile: 'node_modules/.cache/statisticsMath.test.mjs' }))\" && node --test node_modules/.cache/statisticsMath.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

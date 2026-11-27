@@ -6,12 +6,14 @@ import { MathModule } from './modules/math/MathModule';
 import { PhysicsModule } from './modules/physics/PhysicsModule';
 import { PHYSICS_EXPERIMENTS } from './modules/physics/physicsExperiments';
 import { PhysicsExperimentId, YearLevel } from './modules/physics/types';
+import { StatisticsModule } from './modules/statistics/StatisticsModule';
 
 const YEARS: YearLevel[] = [1, 2, 3];
 const firstExperimentOf = (year: YearLevel) => PHYSICS_EXPERIMENTS.find((item) => item.year === year)!.id;
 
 type RouteState =
   | { view: 'math'; presetId?: string }
+  | { view: 'statistics'; presetId?: string }
   | { view: 'physics'; year: YearLevel; experimentId?: PhysicsExperimentId }
   | { view: 'host'; moduleId?: string }
   | { view: 'play'; initialRoomCode?: string };
@@ -25,6 +27,9 @@ function parseLocationRoute(): RouteState {
 
   if (fragment === '#/math') {
     return { view: 'math', presetId: params.get('preset') ?? undefined };
+  }
+  if (fragment === '#/statistics') {
+    return { view: 'statistics', presetId: params.get('preset') ?? undefined };
   }
   if (fragment === '#/physics') {
     const experiment = PHYSICS_EXPERIMENTS.find((item) => item.id === params.get('experiment'));
@@ -57,6 +62,7 @@ export function App() {
     if (next.view === 'play' && next.initialRoomCode) params.set('room', next.initialRoomCode);
     if (next.view === 'physics' && next.experimentId) params.set('experiment', next.experimentId);
     if (next.view === 'math' && next.presetId) params.set('preset', next.presetId);
+    if (next.view === 'statistics' && next.presetId) params.set('preset', next.presetId);
 
     const query = params.size ? `?${params}` : '';
     window.location.hash = `#/${next.view}${query}`;
@@ -80,6 +86,9 @@ export function App() {
           <nav className="session-switcher" aria-label="Conteúdos">
             <a className="session-tab" href="#/math" aria-current={route.view === 'math' ? 'page' : undefined}>
               Matemática
+            </a>
+            <a className="session-tab" href="#/statistics" aria-current={route.view === 'statistics' ? 'page' : undefined}>
+              Estatística
             </a>
             {YEARS.map((year) => (
               <a key={year} className="session-tab" href={`#/physics?experiment=${firstExperimentOf(year)}`}
@@ -105,6 +114,9 @@ export function App() {
 
       <div className="session-viewport">
         {route.view === 'math' && <MathModule initialPresetId={route.presetId} onPresent={openClassroom} />}
+        {route.view === 'statistics' && (
+          <StatisticsModule initialPresetId={route.presetId} onPresent={openClassroom} />
+        )}
         {route.view === 'physics' && (
           <PhysicsModule
             key={route.experimentId}
