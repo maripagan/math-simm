@@ -24,7 +24,7 @@ export const YEAR2_EXPERIMENTS: PhysicsExperiment[] = [
       TQ: { value: 600, min: 320, max: 1000, step: 20 },
       TF: { value: 300, min: 150, max: 580, step: 20 },
     },
-    viewport: { centerX: 4, centerY: 3, scale: 62 },
+    viewport: { centerX: 6, centerY: 3, scale: 44 },
     visualCard: 'carnot',
     theory: {
       intuition: [
@@ -75,7 +75,7 @@ export const YEAR2_EXPERIMENTS: PhysicsExperiment[] = [
     title: 'Óptica Geométrica — Lei de Snell & Reflexão Total',
     shortTitle: 'Refração (Snell)',
     summary:
-      'Arraste o laser diretamente no gráfico para mudar o ângulo θ1 ou inverter a direção (de cima para baixo ou de baixo para cima). Observe o cone crítico e os pulsos de luz mudando de velocidade!',
+      'Arraste o ponto amarelo no gráfico para mudar o ângulo θ1 ou inverter a direção (de cima para baixo ou de baixo para cima). Observe o cone crítico e os pulsos de luz mudando de velocidade!',
     keyFormulaTex:
       'n_1\\sin\\theta_1 = n_2\\sin\\theta_2, \\quad \\sin\\theta_L = \\frac{n_{\\text{menor}}}{n_{\\text{maior}}}',
     legendItems: [
@@ -88,7 +88,7 @@ export const YEAR2_EXPERIMENTS: PhysicsExperiment[] = [
       n1: { value: 1.0, min: 1.0, max: 2.4, step: 0.05 },
       n2: { value: 1.5, min: 1.0, max: 2.4, step: 0.05 },
       ang1: { value: 0.65, min: 0.05, max: 1.48, step: 0.03 },
-      dir: { value: 1, min: -1, max: 1, step: 2 },
+      dir: { value: -1, min: -1, max: 1, step: 2 },
     },
     viewport: { centerX: 0, centerY: 0, scale: 68 },
     theory: {
@@ -110,6 +110,15 @@ export const YEAR2_EXPERIMENTS: PhysicsExperiment[] = [
         { symbol: 'n1', name: 'Índice de refração do meio superior', unit: 'adim.' },
         { symbol: 'n2', name: 'Índice de refração do meio inferior', unit: 'adim.' },
         { symbol: 'ang1', name: 'Ângulo de incidência θ₁ (com a normal)', unit: 'rad' },
+        {
+          symbol: 'dir',
+          name: 'Sentido do feixe',
+          unit: '',
+          choices: [
+            { value: 1, label: 'De cima (meio 1 → 2)' },
+            { value: -1, label: 'De baixo (meio 2 → 1)' },
+          ],
+        },
       ],
       observations: [
         'Os ângulos são sempre medidos em relação à reta Normal (vertical tracejada), nunca em relação à superfície!',
@@ -146,7 +155,7 @@ export const YEAR2_EXPERIMENTS: PhysicsExperiment[] = [
     title: 'Lentes Esféricas (Equação de Gauss)',
     shortTitle: 'Lentes (Gauss)',
     summary:
-      'Mova o objeto (p) e a distância focal (f) para ver os raios notáveis desenharem a imagem real/virtual, invertida/direita e o aumento linear transversal A.',
+      'Mova o objeto (p) e a distância focal (f) para ver os raios notáveis desenharem a imagem real/virtual, invertida/direita e o aumento linear transversal A. Arraste o ponto amarelo para mover o objeto.',
     keyFormulaTex:
       '\\frac{1}{f} = \\frac{1}{p} + \\frac{1}{p\'}, \\quad A = -\\frac{p\'}{p}',
     legendItems: [

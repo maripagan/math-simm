@@ -51,6 +51,7 @@ export interface VariableGlossaryItem {
   symbol: string;
   name: string;
   unit: string;
+  choices?: Array<{ value: number; label: string }>;
 }
 
 export interface GuidedScenario {

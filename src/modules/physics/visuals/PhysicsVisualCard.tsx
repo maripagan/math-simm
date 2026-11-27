@@ -149,8 +149,8 @@ export function PhysicsVisualCard({ type, scope }: PhysicsVisualCardProps) {
             width="204"
             height="106"
             rx="4"
-            fill="#0f172a"
-            stroke="#475569"
+            fill="#f1f5f9"
+            stroke="#64748b"
             strokeWidth="2"
           />
           {/* Base water reference line */}
@@ -370,7 +370,7 @@ export function PhysicsVisualCard({ type, scope }: PhysicsVisualCardProps) {
         </text>
 
         {/* Live P, V, T */}
-        <text x="130" y="138" textAnchor="middle" fill="#cbd5e1" fontSize="9.5" fontFamily="monospace">
+        <text x="130" y="138" textAnchor="middle" fill="#475569" fontSize="9.5" fontFamily="monospace">
           T={carnot.T.toFixed(0)}K · V={carnot.V.toFixed(2)} · P={carnot.P.toFixed(2)}kPa
         </text>
       </svg>

@@ -1,4 +1,5 @@
 import { PresetCategory, PresetScene } from '../../types';
+import { VariableGlossaryItem } from '../physics/types';
 
 export const MATH_CATEGORIES: Array<{
   id: PresetCategory | 'todos';
@@ -7,6 +8,13 @@ export const MATH_CATEGORIES: Array<{
   { id: 'todos', label: 'Todos' },
   { id: 'matematica', label: 'Funções & Ondas' },
   { id: 'complexos', label: 'Números Complexos (ℂ)' },
+];
+
+export const EULER_PRESET_ID = 'euler-phasor';
+
+export const EULER_PARAMETERS: VariableGlossaryItem[] = [
+  { symbol: 'r', name: 'Módulo do fasor', unit: '' },
+  { symbol: 'w', name: 'Frequência angular ω', unit: 'rad/s' },
 ];
 
 export const MATH_PRESETS: PresetScene[] = [
@@ -58,7 +66,7 @@ export const MATH_PRESETS: PresetScene[] = [
     viewport: { centerX: 0, centerY: 0.5, scale: 60 },
   },
   {
-    id: 'euler-phasor',
+    id: EULER_PRESET_ID,
     category: 'complexos',
     title: 'Fórmula de Euler & Fasor (ℂ)',
     description:

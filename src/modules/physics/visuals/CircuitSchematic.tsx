@@ -60,10 +60,10 @@ export function CircuitSchematic({ mode, scope }: CircuitSchematicProps) {
           <polyline
             points="92,30 98,22 108,38 118,22 128,38 138,22 144,30 150,30"
             fill="none"
-            stroke="#f8fafc"
+            stroke="#162033"
             strokeWidth="2.2"
           />
-          <text x="121" y="15" textAnchor="middle" fill="#cbd5e1" fontSize="10" fontFamily="monospace">
+          <text x="121" y="15" textAnchor="middle" fill="#475569" fontSize="10" fontFamily="monospace">
             R={R.toFixed(1)}Ω
           </text>
 
@@ -133,14 +133,14 @@ export function CircuitSchematic({ mode, scope }: CircuitSchematicProps) {
         />
 
         {/* AC Source */}
-        <circle cx="34" cy="60" r="13" fill="#0f172a" stroke="#38bdf8" strokeWidth="2.2" />
+        <circle cx="34" cy="60" r="13" fill="#eff6ff" stroke="#2563eb" strokeWidth="2.2" />
         <path
           d="M 26 60 Q 30 52 34 60 T 42 60"
           fill="none"
-          stroke="#38bdf8"
+          stroke="#2563eb"
           strokeWidth="2"
         />
-        <text x="34" y="86" textAnchor="middle" fill="#38bdf8" fontSize="9" fontFamily="monospace">
+        <text x="34" y="86" textAnchor="middle" fill="#2563eb" fontSize="9" fontFamily="monospace">
           {V0.toFixed(1)}V~
         </text>
 
@@ -148,10 +148,10 @@ export function CircuitSchematic({ mode, scope }: CircuitSchematicProps) {
         <polyline
           points="74,32 80,24 88,40 96,24 104,40 112,24 118,32"
           fill="none"
-          stroke="#f8fafc"
+          stroke="#162033"
           strokeWidth="2"
         />
-        <text x="96" y="16" textAnchor="middle" fill="#cbd5e1" fontSize="9" fontFamily="monospace">
+        <text x="96" y="16" textAnchor="middle" fill="#475569" fontSize="9" fontFamily="monospace">
           R={R.toFixed(1)}
         </text>
 

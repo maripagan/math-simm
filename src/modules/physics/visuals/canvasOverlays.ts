@@ -1,5 +1,5 @@
-import { CanvasOverlayHelpers } from '../../../components/GraphCanvas';
-import { PhysicsExperimentId } from '../types';
+import { CanvasDragTarget, CanvasOverlayHelpers } from '../../../components/GraphCanvas';
+import { ParameterConfig } from '../../../types';
 import { evaluateCarnotState } from './carnotModel';
 
 function num(scope: Record<string, unknown>, key: string, fallback = 0): number {
@@ -57,19 +57,19 @@ function drawBadge(
   x: number,
   y: number,
   text: string,
-  borderColor = '#38bdf8',
+  borderColor = '#2563eb',
 ) {
   ctx.save();
   ctx.font = '600 11px ui-monospace, SFMono-Regular, Menlo, monospace';
   const w = ctx.measureText(text).width + 20;
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.roundRect(x, y, w, 28, 6);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#f8fafc';
+  ctx.fillStyle = '#162033';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x + 10, y + 14);
@@ -233,8 +233,8 @@ function renderInclinedPlaneOverlay(
   const bh = 165;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-  ctx.strokeStyle = '#334155';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+  ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.roundRect(bx, by, bw, bh, 10);
@@ -329,9 +329,9 @@ function renderKeplerOverlay(
   ctx: CanvasRenderingContext2D,
   h: CanvasOverlayHelpers,
 ) {
-  const a = Math.max(0.2, num(h.scope, 'a', 3.4));
+  const q = num(h.scope, 'q', 1.4);
   const ecc = Math.max(0, num(h.scope, 'ecc', 0.58));
-  const p = a * Math.abs(1 - ecc * ecc);
+  const p = q * (1 + ecc);
 
   const ox = h.toScreenX(0);
   const oy = h.toScreenY(0);
@@ -351,7 +351,7 @@ function renderKeplerOverlay(
   ctx.arc(ox, oy, 7, 0, Math.PI * 2);
   ctx.fill();
 
-  const rPeri = p / (1 + ecc);
+  const rPeri = q;
   const sxPeri = h.toScreenX(rPeri);
   ctx.fillStyle = '#34d399';
   ctx.beginPath();
@@ -362,7 +362,7 @@ function renderKeplerOverlay(
   ctx.textBaseline = 'top';
   ctx.fillText(`Periélio (${rPeri.toFixed(2)})`, sxPeri + 6, oy + 8);
 
-  if (ecc < 0.98) {
+  if (ecc < 1) {
     const rAph = p / (1 - ecc);
     const sxAph = h.toScreenX(-rAph);
     ctx.fillStyle = '#34d399';
@@ -373,11 +373,6 @@ function renderKeplerOverlay(
     ctx.fillText(`Afélio (${rAph.toFixed(2)})`, sxAph - 6, oy + 8);
   }
 
-  let orbitType = 'Elipse (0 < ε < 1)';
-  if (ecc < 0.03) orbitType = 'Círculo (ε ≈ 0)';
-  else if (Math.abs(ecc - 1) <= 0.03) orbitType = 'Parábola (ε ≈ 1)';
-  else if (ecc > 1.03) orbitType = 'Hipérbole (ε > 1)';
-  drawBadge(ctx, 14, 14, `Órbita: ${orbitType}`);
   ctx.restore();
 }
 
@@ -409,6 +404,50 @@ function drawLightPulses(
   ctx.restore();
 }
 
+const snellRayLength = (h: CanvasOverlayHelpers) => Math.min(h.width, h.height) * 0.38;
+
+const snellDragTarget: CanvasDragTarget = (h) => {
+  const angle = num(h.scope, 'ang1', 0.65);
+  const direction = num(h.scope, 'dir', 1);
+  const length = snellRayLength(h);
+  return {
+    x: h.toScreenX(0) - Math.sin(angle) * length,
+    y: h.toScreenY(0) - direction * Math.cos(angle) * length,
+  };
+};
+
+const lensDragTarget: CanvasDragTarget = (h) => ({
+  x: h.toScreenX(-num(h.scope, 'p', 4.2)),
+  y: h.toScreenY(num(h.scope, 'hObj', 1.6)),
+});
+
+export function getOpticsDrag(
+  experimentId: string,
+  scope: Record<string, unknown>,
+  update: (name: string, patch: Partial<ParameterConfig>) => void,
+) {
+  if (experimentId === 'snell-optics') {
+    return {
+      target: snellDragTarget,
+      onDrag: (x: number, y: number) => {
+        const angle = Math.atan2(-x, Math.abs(y));
+        update('ang1', { value: Math.min(1.48, Math.max(0.05, angle)), playing: false });
+        if (y !== 0 && Math.sign(y) !== scope.dir) update('dir', { value: Math.sign(y) });
+      },
+    };
+  }
+  if (experimentId === 'thin-lens') {
+    return {
+      target: lensDragTarget,
+      onDrag: (x: number, y: number) => {
+        update('p', { value: Math.min(7.5, Math.max(0.6, -x)), playing: false });
+        update('hObj', { value: Math.min(3.0, Math.max(0.5, y)), playing: false });
+      },
+    };
+  }
+  return {};
+}
+
 function renderSnellOverlay(
   ctx: CanvasRenderingContext2D,
   h: CanvasOverlayHelpers,
@@ -424,7 +463,7 @@ function renderSnellOverlay(
 
   const ox = h.toScreenX(0);
   const oy = h.toScreenY(0);
-  const rayLen = Math.min(h.width, h.height) * 0.42;
+  const rayLen = snellRayLength(h);
 
   ctx.save();
   // Normal dashed line
@@ -470,34 +509,14 @@ function renderSnellOverlay(
   drawVectorArrow(ctx, ix, iy, ox, oy, '#fbbf24');
   drawLightPulses(ctx, ix, iy, ox, oy, t, 110 / nInc, '#fef08a');
 
-  // Draggable laser handle at incident tip
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.arc(ix, iy, 7, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
   // Reflected ray
   const rx = ox + Math.sin(ang1) * rayLen;
   const ry = oy - dir * Math.cos(ang1) * rayLen;
 
   const sin2 = (nInc / nTrans) * Math.sin(ang1);
-  const deg1 = (ang1 * 180) / Math.PI;
-  const dirLabel = dir === 1 ? 'Cima→Baixo' : 'Baixo→Cima';
-
   if (Math.abs(sin2) > 1) {
     drawVectorArrow(ctx, ox, oy, rx, ry, '#f472b6', 'Reflexão Total!');
     drawLightPulses(ctx, ox, oy, rx, ry, t, 110 / nInc, '#fbcfe8');
-    const critDeg = (Math.asin(nTrans / nInc) * 180) / Math.PI;
-    drawBadge(
-      ctx,
-      14,
-      14,
-      `${dirLabel} · REFLEXÃO TOTAL · θ₁=${deg1.toFixed(1)}° > θL=${critDeg.toFixed(1)}°`,
-      '#f472b6',
-    );
   } else {
     ctx.save();
     ctx.globalAlpha = 0.35;
@@ -510,13 +529,7 @@ function renderSnellOverlay(
     const ty = oy + dir * Math.cos(ang2) * rayLen;
     drawVectorArrow(ctx, ox, oy, tx, ty, '#38bdf8', `θ₂=${deg2.toFixed(1)}°`);
     drawLightPulses(ctx, ox, oy, tx, ty, t, 110 / nTrans, '#bae6fd');
-    drawBadge(
-      ctx,
-      14,
-      14,
-      `${dirLabel} · θ₁=${deg1.toFixed(1)}° → θ₂=${deg2.toFixed(1)}° (arraste o ponto amarelo)`,
-      '#38bdf8',
-    );
+
   }
   ctx.restore();
 }
@@ -783,8 +796,8 @@ function renderCoulombOverlay(
   const bh = 96;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-  ctx.strokeStyle = '#334155';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+  ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.roundRect(bx, by, bw, bh, 10);
@@ -884,8 +897,8 @@ function renderFaradayOverlay(
   const bh = 114;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-  ctx.strokeStyle = '#334155';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+  ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.roundRect(bx, by, bw, bh, 10);
@@ -1014,7 +1027,7 @@ function renderPhotoelectricOverlay(
   ctx.restore();
 }
 
-export function getPhysicsOverlay(experimentId: PhysicsExperimentId) {
+export function getPhysicsOverlay(experimentId: string) {
   switch (experimentId) {
     case 'projectile':
       return renderProjectileOverlay;

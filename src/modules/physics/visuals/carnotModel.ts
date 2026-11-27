@@ -39,7 +39,7 @@ export function evaluateCarnotState(
   const V1 = 1.4;
   const V2 = 3.0;
   const adiaFactor = Math.pow(safeTQ / safeTF, 1 / (GAMMA - 1));
-  const V3 = Math.min(9.5, V2 * Math.min(2.6, adiaFactor));
+  const V3 = V2 * adiaFactor;
   const V4 = V1 * (V3 / V2);
 
   const cycleT = 8;

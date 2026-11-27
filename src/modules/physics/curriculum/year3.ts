@@ -393,6 +393,7 @@ export const YEAR3_EXPERIMENTS: PhysicsExperiment[] = [
         },
       ],
       variables: [
+        { symbol: 'h', name: 'Constante de Planck', unit: '10⁻¹⁵ eV·s' },
         { symbol: 'phi', name: 'Função trabalho do metal φ', unit: 'eV' },
         { symbol: 'fLight', name: 'Frequência da luz incidente', unit: '10¹⁵ Hz' },
         { symbol: 'f0', name: 'Frequência de corte do metal', unit: '10¹⁵ Hz' },

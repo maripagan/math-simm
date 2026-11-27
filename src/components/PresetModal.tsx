@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import { parseFormula } from '../engine/parser';
+import { KatexPreview } from './KatexPreview';
 import { PresetCategory, PresetScene } from '../types';
 
 interface PresetModalProps {
@@ -69,9 +71,9 @@ export function PresetModal({
               <div className="preset-desc">{preset.description}</div>
               <div className="preset-formulas">
                 {preset.formulas.map((f, i) => (
-                  <code key={i} style={{ borderLeftColor: f.color }}>
-                    {f.raw}
-                  </code>
+                  <span key={i} className="preset-equation" style={{ borderLeftColor: f.color }}>
+                    <KatexPreview as="span" latex={parseFormula(f.raw).latex} />
+                  </span>
                 ))}
               </div>
             </button>

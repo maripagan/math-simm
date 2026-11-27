@@ -29,18 +29,29 @@ export interface CanvasOverlayHelpers {
   toScreenY: (wy: number) => number;
 }
 
+interface CanvasPoint {
+  x: number;
+  y: number;
+}
+
+export type CanvasDragTarget = (helpers: CanvasOverlayHelpers) => CanvasPoint;
+
 interface GraphCanvasProps {
   curves: ActiveCurve[];
   defs: AuxDef[];
   scope: Record<string, unknown>;
   viewport: Viewport;
+  defaultViewport?: Viewport;
+  fitWidth?: number;
+  highContrast?: boolean;
+  label?: string;
+  dragTarget?: CanvasDragTarget;
   onViewportChange: (vp: Viewport) => void;
   renderOverlay?: (
     ctx: CanvasRenderingContext2D,
     helpers: CanvasOverlayHelpers,
   ) => void;
-  /** Optional interactive drag handler in world coordinates. Return true to consume drag instead of panning. */
-  onDragWorld?: (wx: number, wy: number, phase: 'down' | 'move') => boolean;
+  onDragWorld?: (wx: number, wy: number) => void;
 }
 
 interface HoverSnap {
@@ -90,11 +101,18 @@ function drawArrow(
   ctx.restore();
 }
 
+const DEFAULT_VIEWPORT = { centerX: 0, centerY: 0, scale: 60 };
+
 export function GraphCanvas({
   curves,
   defs,
   scope,
-  viewport,
+  viewport: sceneViewport,
+  defaultViewport = DEFAULT_VIEWPORT,
+  fitWidth,
+  highContrast,
+  label,
+  dragTarget,
   onViewportChange,
   renderOverlay,
   onDragWorld,
@@ -113,6 +131,20 @@ export function GraphCanvas({
     origCenterX: number;
     origCenterY: number;
   } | null>(null);
+
+  const scaleFactor = fitWidth ? Math.min(1, size.width / fitWidth) : 1;
+  const viewport = { ...sceneViewport, scale: sceneViewport.scale * scaleFactor };
+  const getHelpers = (): CanvasOverlayHelpers => ({
+    ...size,
+    viewport,
+    scope,
+    toScreenX: (wx) => worldToScreenX(wx, viewport, size.width),
+    toScreenY: (wy) => worldToScreenY(wy, viewport, size.height),
+  });
+  const handlePoint = dragTarget?.(getHelpers());
+  const isOverHandle = (sx: number, sy: number) =>
+    handlePoint !== undefined && Math.hypot(sx - handlePoint.x, sy - handlePoint.y) <= 20;
+  const overHandle = mousePos && isOverHandle(mousePos.sx, mousePos.sy);
 
   // Observe container resize
   useEffect(() => {
@@ -144,7 +176,7 @@ export function GraphCanvas({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Background
-    ctx.fillStyle = '#0b1120';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
     const xMin = screenToWorldX(0, viewport, width);
@@ -156,7 +188,7 @@ export function GraphCanvas({
     const minorStep = majorStep / 5;
 
     // Minor grid
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.07)';
+    ctx.strokeStyle = 'rgba(22, 32, 51, 0.05)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     const startMinorX = Math.floor(xMin / minorStep) * minorStep;
@@ -174,7 +206,7 @@ export function GraphCanvas({
     ctx.stroke();
 
     // Major grid
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+    ctx.strokeStyle = 'rgba(22, 32, 51, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     const startMajorX = Math.floor(xMin / majorStep) * majorStep;
@@ -194,8 +226,8 @@ export function GraphCanvas({
     // Main Axes
     const originX = worldToScreenX(0, viewport, width);
     const originY = worldToScreenY(0, viewport, height);
-    ctx.strokeStyle = 'rgba(226, 232, 240, 0.45)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = highContrast ? '#0f172a' : 'rgba(22, 32, 51, 0.42)';
+    ctx.lineWidth = highContrast ? 2 : 1.5;
     ctx.beginPath();
     if (originX >= 0 && originX <= width) {
       ctx.moveTo(originX, 0);
@@ -208,8 +240,8 @@ export function GraphCanvas({
     ctx.stroke();
 
     // Axis labels
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillStyle = highContrast ? '#0f172a' : '#4b5b75';
+    ctx.font = `${highContrast ? 14 : 11}px ui-monospace, SFMono-Regular, Menlo, monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     const labelY = Math.min(Math.max(originY + 6, 6), height - 18);
@@ -353,7 +385,7 @@ export function GraphCanvas({
           const prefix = curve.labelName ? `${curve.labelName} ` : '';
           const ptLabel = `${prefix}(${wx.toFixed(2)}, ${wy.toFixed(2)})`;
           ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
-          ctx.fillStyle = '#e2e8f0';
+          ctx.fillStyle = '#162033';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'bottom';
           ctx.fillText(ptLabel, sx + 8, sy - 6);
@@ -442,7 +474,7 @@ export function GraphCanvas({
               ? `${curve.labelName}: `
               : '';
           ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
-          ctx.fillStyle = '#e2e8f0';
+          ctx.fillStyle = '#162033';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'bottom';
           ctx.fillText(
@@ -647,7 +679,7 @@ export function GraphCanvas({
       ctx.beginPath();
       ctx.arc(sx, sy, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#0b1120';
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
@@ -736,7 +768,7 @@ export function GraphCanvas({
 
       if (bestSnap) {
         // Crosshair guide
-        ctx.strokeStyle = 'rgba(226, 232, 240, 0.25)';
+        ctx.strokeStyle = 'rgba(22, 32, 51, 0.22)';
         ctx.setLineDash([4, 4]);
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -764,21 +796,30 @@ export function GraphCanvas({
         const boxX = Math.min(Math.max(bestSnap.sx + 12, 8), width - boxW - 8);
         const boxY = Math.max(bestSnap.sy - 34, 8);
 
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
         ctx.strokeStyle = bestSnap.color;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, boxW, boxH, 6);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = '#162033';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(bestSnap.label, boxX + 8, boxY + boxH / 2);
       }
     }
-  }, [curves, defs, scope, viewport, size, mousePos, renderOverlay]);
+    if (handlePoint) {
+      ctx.beginPath();
+      ctx.arc(handlePoint.x, handlePoint.y, overHandle ? 9 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }, [curves, defs, scope, sceneViewport, scaleFactor, size, mousePos, renderOverlay, dragTarget, highContrast]);
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -798,32 +839,18 @@ export function GraphCanvas({
     onViewportChange({
       centerX: nextCenterX,
       centerY: nextCenterY,
-      scale: nextScale,
+      scale: nextScale / scaleFactor,
     });
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 || !e.isPrimary) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const wx = screenToWorldX(sx, viewport, size.width);
-    const wy = screenToWorldY(sy, viewport, size.height);
-
-    if (onDragWorld && onDragWorld(wx, wy, 'down')) {
-      dragRef.current = {
-        active: true,
-        mode: 'interact',
-        startX: e.clientX,
-        startY: e.clientY,
-        origCenterX: viewport.centerX,
-        origCenterY: viewport.centerY,
-      };
-      return;
-    }
-
+    const mode = isOverHandle(e.clientX - rect.left, e.clientY - rect.top) ? 'interact' : 'pan';
+    e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
       active: true,
-      mode: 'pan',
+      mode,
       startX: e.clientX,
       startY: e.clientY,
       origCenterX: viewport.centerX,
@@ -831,53 +858,50 @@ export function GraphCanvas({
     };
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!e.isPrimary) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
     setMousePos({ sx, sy });
 
-    if (dragRef.current?.active) {
-      if (dragRef.current.mode === 'interact' && onDragWorld) {
-        const wx = screenToWorldX(sx, viewport, size.width);
-        const wy = screenToWorldY(sy, viewport, size.height);
-        onDragWorld(wx, wy, 'move');
-        return;
-      }
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
-      onViewportChange({
-        ...viewport,
-        centerX: dragRef.current.origCenterX - dx / viewport.scale,
-        centerY: dragRef.current.origCenterY + dy / viewport.scale,
-      });
+    const drag = dragRef.current;
+    if (!drag?.active) return;
+    if (drag.mode === 'interact' && onDragWorld) {
+      onDragWorld(screenToWorldX(sx, viewport, size.width), screenToWorldY(sy, viewport, size.height));
+      return;
     }
+    onViewportChange({
+      ...sceneViewport,
+      centerX: drag.origCenterX - (e.clientX - drag.startX) / viewport.scale,
+      centerY: drag.origCenterY + (e.clientY - drag.startY) / viewport.scale,
+    });
   };
 
-  const handleMouseUp = () => {
-    if (dragRef.current) dragRef.current.active = false;
+  const endDrag = () => {
+    dragRef.current = null;
   };
 
   return (
     <div ref={containerRef} className="canvas-container">
       <canvas
         ref={canvasRef}
-        className="graph-canvas"
+        className={`graph-canvas${dragTarget ? ' has-drag-target' : ''}${overHandle ? ' over-drag-target' : ''}`}
+        role={label ? 'img' : undefined}
+        aria-label={label}
         onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={() => {
-          handleMouseUp();
-          setMousePos(null);
-        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
+        onPointerLeave={() => setMousePos(null)}
       />
       <button
         className="reset-view-btn"
-        onClick={() => onViewportChange({ centerX: 0, centerY: 0, scale: 60 })}
-        title="Centralizar origem (0, 0)"
+        onClick={() => onViewportChange(defaultViewport)}
       >
-        Resetar Zoom
+        Restaurar vista
       </button>
     </div>
   );

@@ -6,10 +6,8 @@ import {
   buildScopeWithDefs,
 } from '../engine/evaluator';
 import { ParsedFormula, parseFormula } from '../engine/parser';
-import {
-  PHYSICS_EXPERIMENTS,
-  PhysicsExperiment,
-} from '../modules/physics/physicsExperiments';
+import { MATH_PRESETS } from '../modules/math/mathPresets';
+import { PHYSICS_EXPERIMENTS } from '../modules/physics/physicsExperiments';
 import { getPhysicsOverlay } from '../modules/physics/visuals/canvasOverlays';
 import { FormulaItem, ParameterConfig, Viewport } from '../types';
 import { EnginePreset } from './schemas';
@@ -24,13 +22,19 @@ export interface ProjectileChallengeOverlay {
 
 export type ChallengeOverlayConfig = ProjectileChallengeOverlay;
 
-export interface ApplyPresetOptions {
-  resetTime?: boolean;
-  play?: boolean;
+export interface EngineScene {
+  id: string;
+  formulas: Array<{ raw: string; color: string }>;
+  parameters: Record<
+    string,
+    { value: number; min: number; max: number; step: number }
+  >;
   viewport?: Viewport;
 }
 
-function experimentToInitialState(exp: PhysicsExperiment): {
+const LONG_PROJECTILE_VIEW: Viewport = { centerX: 44, centerY: 16, scale: 8.5 };
+
+function experimentToInitialState(exp: EngineScene): {
   formulas: FormulaItem[];
   parameters: Record<string, ParameterConfig>;
   viewport: Viewport;
@@ -58,7 +62,7 @@ function experimentToInitialState(exp: PhysicsExperiment): {
   return {
     formulas,
     parameters,
-    viewport: exp.viewport,
+    viewport: exp.viewport ?? { centerX: 0, centerY: 0, scale: 60 },
   };
 }
 
@@ -106,30 +110,27 @@ function renderChallengeOverlay(
   }
 }
 
+export function getSimulationScene(id: string) {
+  const scene = PHYSICS_EXPERIMENTS.find((experiment) => experiment.id === id) ??
+    MATH_PRESETS.find((preset) => preset.id === id);
+  if (!scene) throw new Error(`Cena ausente: ${id}`);
+  return scene;
+}
+
 export interface UseSimulationBridgeOptions {
-  engineId: string;
+  scene: EngineScene;
   externalPreset?: EnginePreset;
   challengeOverlay?: ChallengeOverlayConfig;
   initialPlaying?: boolean;
 }
 
 export function useSimulationBridge({
-  engineId,
+  scene,
   externalPreset,
   challengeOverlay,
   initialPlaying = true,
 }: UseSimulationBridgeOptions) {
-  const experiment = useMemo(
-    () =>
-      PHYSICS_EXPERIMENTS.find((e) => e.id === engineId) ??
-      PHYSICS_EXPERIMENTS[0],
-    [engineId],
-  );
-
-  const initial = useMemo(
-    () => experimentToInitialState(experiment),
-    [experiment],
-  );
+  const initial = useMemo(() => experimentToInitialState(scene), [scene]);
 
   const [formulas, setFormulas] = useState<FormulaItem[]>(initial.formulas);
   const [parameters, setParameters] = useState<Record<string, ParameterConfig>>(
@@ -140,67 +141,42 @@ export function useSimulationBridge({
   const [timePlaying, setTimePlaying] = useState(initialPlaying);
   const [timeSpeed, setTimeSpeed] = useState(1);
 
-  // Reinicia quando o engineId muda
+  const isLongProjectile = scene.id === 'projectile' &&
+    typeof externalPreset?.v0 === 'number' && externalPreset.v0 >= 22;
+  const defaultViewport = isLongProjectile ? LONG_PROJECTILE_VIEW : initial.viewport;
+
   useEffect(() => {
-    const next = experimentToInitialState(experiment);
-    setFormulas(next.formulas);
-    setParameters(next.parameters);
-    setViewport(next.viewport);
+    setFormulas(initial.formulas);
+    setParameters(initial.parameters);
+    setViewport(initial.viewport);
     setT(0);
+  }, [initial]);
+
+  useEffect(() => {
     setTimePlaying(initialPlaying);
-  }, [experiment, initialPlaying]);
+  }, [scene, initialPlaying]);
 
-  const applyPreset = useCallback(
-    (preset: EnginePreset, opts?: ApplyPresetOptions) => {
-      setParameters((prev) => {
-        const next = { ...prev };
-        for (const [key, rawVal] of Object.entries(preset)) {
-          if (typeof rawVal !== 'number' || !Number.isFinite(rawVal)) continue;
-          if (next[key]) {
-            const clamped = Math.min(
-              next[key].max,
-              Math.max(next[key].min, rawVal),
-            );
-            next[key] = { ...next[key], value: clamped, playing: false };
-          }
-        }
-        return next;
-      });
-
-      if (opts?.viewport) {
-        setViewport(opts.viewport);
-      } else if (experiment.id === 'projectile') {
-        // Ajusta viewport automaticamente se v0 for alto (ex: desafio de 80m)
-        const v0 =
-          typeof preset.v0 === 'number'
-            ? preset.v0
-            : (parameters.v0?.value ?? 12);
-        if (v0 >= 22) {
-          setViewport({ centerX: 44, centerY: 16, scale: 8.5 });
-        } else {
-          setViewport(experiment.viewport);
-        }
-      }
-
-      if (opts?.resetTime) {
-        setT(0);
-      }
-      if (typeof opts?.play === 'boolean') {
-        setTimePlaying(opts.play);
-      }
-    },
-    [experiment, parameters.v0?.value],
-  );
-
-  // Sincroniza quando externalPreset mudar
-  const lastPresetKeyRef = useRef<string>('');
   useEffect(() => {
     if (!externalPreset) return;
-    const key = JSON.stringify(externalPreset);
-    if (key === lastPresetKeyRef.current) return;
-    lastPresetKeyRef.current = key;
-    applyPreset(externalPreset, { resetTime: true, play: true });
-  }, [externalPreset, applyPreset]);
+    setParameters((current) => {
+      const next = { ...current };
+      for (const [name, value] of Object.entries(externalPreset)) {
+        const param = next[name];
+        if (!param || typeof value !== 'number' || !Number.isFinite(value)) continue;
+        next[name] = {
+          ...param,
+          value: Math.min(param.max, Math.max(param.min, value)),
+          playing: false,
+        };
+      }
+      return next;
+    });
+    setT(0);
+
+    if (scene.id === 'projectile' && typeof externalPreset.v0 === 'number') {
+      setViewport(defaultViewport);
+    }
+  }, [scene.id, initial, externalPreset, defaultViewport]);
 
   const parsedMap = useMemo(() => {
     const map: Record<string, ParsedFormula> = {};
@@ -226,7 +202,7 @@ export function useSimulationBridge({
         if (timePlaying) {
           setT((prev) => {
             const nextT = prev + dt * timeSpeed;
-            if (experiment.id === 'projectile') {
+            if (scene.id === 'projectile') {
               const v0 = parameters.v0?.value ?? 12;
               const ang = parameters.ang?.value ?? 0.9;
               const g = Math.max(0.1, parameters.g?.value ?? 9.8);
@@ -243,7 +219,7 @@ export function useSimulationBridge({
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [timePlaying, timeSpeed, anyParamPlaying, experiment.id, parameters]);
+  }, [timePlaying, timeSpeed, anyParamPlaying, scene.id, parameters]);
 
   const auxDefs: AuxDef[] = useMemo(() => {
     const defs: AuxDef[] = [];
@@ -291,13 +267,13 @@ export function useSimulationBridge({
   }, [parameters, t, auxDefs]);
 
   const overlayFn = useMemo(() => {
-    const baseOverlay = getPhysicsOverlay(experiment.id);
+    const baseOverlay = getPhysicsOverlay(scene.id);
     if (!challengeOverlay) return baseOverlay;
     return (ctx: CanvasRenderingContext2D, h: CanvasOverlayHelpers) => {
       baseOverlay?.(ctx, h);
       renderChallengeOverlay(ctx, h, challengeOverlay);
     };
-  }, [experiment.id, challengeOverlay]);
+  }, [scene.id, challengeOverlay]);
 
   const updateParameter = useCallback(
     (name: string, patch: Partial<ParameterConfig>) => {
@@ -316,21 +292,19 @@ export function useSimulationBridge({
   const togglePlay = useCallback(() => setTimePlaying((p) => !p), []);
 
   return {
-    experiment,
+    defaultViewport,
     formulas,
     parameters,
     viewport,
     setViewport,
     t,
     timePlaying,
-    setTimePlaying,
     timeSpeed,
     setTimeSpeed,
     activeCurves,
     auxDefs,
     scope,
     overlayFn,
-    applyPreset,
     updateParameter,
     resetTime,
     togglePlay,

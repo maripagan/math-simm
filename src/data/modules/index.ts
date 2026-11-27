@@ -1,5 +1,6 @@
 import { ClassroomModule } from '../../classroom/schemas';
 import { carnotModule } from './carnot';
+import { eulerModule } from './euler';
 import { faradayModule } from './faraday';
 import { keplerModule } from './kepler';
 import { projectileModule } from './projectile';
@@ -11,6 +12,7 @@ export const CLASSROOM_MODULES: ClassroomModule[] = [
   faradayModule,
   keplerModule,
   projectileModule,
+  eulerModule,
 ];
 
 export function getClassroomModuleById(
@@ -33,6 +35,7 @@ export function getClassroomModulesByThemeTag(tag: string): ClassroomModule[] {
 
 export {
   carnotModule,
+  eulerModule,
   faradayModule,
   keplerModule,
   projectileModule,

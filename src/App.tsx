@@ -1,41 +1,45 @@
-import { Atom, Home, Presentation, Sigma } from 'lucide-react';
+import { Presentation, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { HostView } from './classroom/components/HostView';
 import { PlayView } from './classroom/components/PlayView';
-import { HomePage } from './components/HomePage';
 import { MathModule } from './modules/math/MathModule';
 import { PhysicsModule } from './modules/physics/PhysicsModule';
-import { YearLevel } from './modules/physics/types';
+import { PHYSICS_EXPERIMENTS } from './modules/physics/physicsExperiments';
+import { PhysicsExperimentId, YearLevel } from './modules/physics/types';
+
+const YEARS: YearLevel[] = [1, 2, 3];
+const firstExperimentOf = (year: YearLevel) => PHYSICS_EXPERIMENTS.find((item) => item.year === year)!.id;
 
 type RouteState =
-  | { view: 'home' }
-  | { view: 'math' }
-  | { view: 'physics'; year: YearLevel }
-  | { view: 'host' }
+  | { view: 'math'; presetId?: string }
+  | { view: 'physics'; year: YearLevel; experimentId?: PhysicsExperimentId }
+  | { view: 'host'; moduleId?: string }
   | { view: 'play'; initialRoomCode?: string };
 
 function parseLocationRoute(): RouteState {
-  const hash = window.location.hash || '';
-  const path = window.location.pathname || '';
+  const [fragment, query] = window.location.hash.split('?');
+  const path = window.location.pathname;
+  const params = new URLSearchParams(fragment ? query : window.location.search);
 
-  if (hash.startsWith('#scene=')) {
-    return { view: 'math' };
+  if (fragment.startsWith('#scene=')) return { view: 'math' };
+
+  if (fragment === '#/math') {
+    return { view: 'math', presetId: params.get('preset') ?? undefined };
+  }
+  if (fragment === '#/physics') {
+    const experiment = PHYSICS_EXPERIMENTS.find((item) => item.id === params.get('experiment'));
+    if (experiment) {
+      return { view: 'physics', year: experiment.year, experimentId: experiment.id };
+    }
+  }
+  if (fragment === '#/host' || (!fragment && (path === '/host' || path === '/sala/criar'))) {
+    return { view: 'host', moduleId: params.get('aula') ?? undefined };
+  }
+  if (fragment === '#/play' || (!fragment && (path === '/play' || path === '/entrar'))) {
+    return { view: 'play', initialRoomCode: params.get('room') ?? undefined };
   }
 
-  if (hash.startsWith('#/host') || path === '/host' || path === '/sala/criar') {
-    return { view: 'host' };
-  }
-
-  if (hash.startsWith('#/play') || path === '/play' || path === '/entrar') {
-    const queryStr = hash.includes('?')
-      ? hash.slice(hash.indexOf('?') + 1)
-      : window.location.search.replace(/^\?/, '');
-    const params = new URLSearchParams(queryStr);
-    const room = params.get('room') ?? undefined;
-    return { view: 'play', initialRoomCode: room };
-  }
-
-  return { view: 'home' };
+  return { view: 'math' };
 }
 
 export function App() {
@@ -48,82 +52,68 @@ export function App() {
   }, []);
 
   const navigate = (next: RouteState) => {
-    if (next.view === 'host') {
-      window.location.hash = '#/host';
-    } else if (next.view === 'play') {
-      const qs = next.initialRoomCode
-        ? `?room=${encodeURIComponent(next.initialRoomCode)}`
-        : '';
-      window.location.hash = `#/play${qs}`;
-    } else if (
-      window.location.hash.startsWith('#/host') ||
-      window.location.hash.startsWith('#/play')
-    ) {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    const params = new URLSearchParams();
+    if (next.view === 'host' && next.moduleId) params.set('aula', next.moduleId);
+    if (next.view === 'play' && next.initialRoomCode) params.set('room', next.initialRoomCode);
+    if (next.view === 'physics' && next.experimentId) params.set('experiment', next.experimentId);
+    if (next.view === 'math' && next.presetId) params.set('preset', next.presetId);
+
+    const query = params.size ? `?${params}` : '';
+    window.location.hash = `#/${next.view}${query}`;
     setRoute(next);
   };
+
+  const openClassroom = (moduleId: string) => navigate({ view: 'host', moduleId });
 
   return (
     <div className="app-root">
       {route.view !== 'play' && (
         <header className="top-nav">
-          <button
-            className="brand brand-btn"
-            onClick={() => navigate({ view: 'home' })}
-            title="Voltar para a tela inicial"
-          >
+          <a className="brand brand-btn" href="/" title="Voltar para a página inicial">
             <span className="brand-mark">∫</span>
-            <div style={{ textAlign: 'left' }}>
-              <h1>MathSimulator</h1>
-              <span className="brand-sub">Engine Matemática Unificada</span>
-            </div>
-          </button>
+            <span>
+              <strong className="brand-name">MathSimulator</strong>
+              <span className="brand-sub">Física e matemática ao vivo</span>
+            </span>
+          </a>
 
-          {route.view !== 'home' && (
-            <div className="top-nav-right">
-              <span className="route-pill">
-                {route.view === 'math' && (
-                  <>
-                    <Sigma size={14} /> Matemática Pura
-                  </>
-                )}
-                {route.view === 'physics' && (
-                  <>
-                    <Atom size={14} /> Física · {route.year}º Ano
-                  </>
-                )}
-                {route.view === 'host' && (
-                  <>
-                    <Presentation size={14} /> Modo Sala de Aula · Professor
-                  </>
-                )}
-              </span>
+          <nav className="session-switcher" aria-label="Conteúdos">
+            <a className="session-tab" href="#/math" aria-current={route.view === 'math' ? 'page' : undefined}>
+              Matemática
+            </a>
+            {YEARS.map((year) => (
+              <a key={year} className="session-tab" href={`#/physics?experiment=${firstExperimentOf(year)}`}
+                aria-current={route.view === 'physics' && route.year === year ? 'page' : undefined}>
+                Física {year}º ano
+              </a>
+            ))}
+            <a className="session-tab is-room" href="#/host" aria-current={route.view === 'host' ? 'page' : undefined}>
+              <Presentation size={14} aria-hidden="true" /> Modo Sala
+            </a>
+          </nav>
 
-              <button
-                className="btn-secondary"
-                onClick={() => navigate({ view: 'home' })}
-              >
-                <Home size={14} />
-                <span>Início</span>
-              </button>
-            </div>
-          )}
+          <div className="top-nav-right">
+            {route.view !== 'host' && (
+              <a className="btn-secondary btn-ghost" href="#/play" target="_blank" rel="noopener noreferrer">
+                <Smartphone size={14} aria-hidden="true" />
+                <span>Tela do aluno</span>
+              </a>
+            )}
+          </div>
         </header>
       )}
 
       <div className="session-viewport">
-        {route.view === 'home' && (
-          <HomePage
-            onOpenMath={() => navigate({ view: 'math' })}
-            onOpenPhysicsYear={(year) => navigate({ view: 'physics', year })}
-            onOpenClassroomHost={() => navigate({ view: 'host' })}
-            onOpenClassroomPlay={() => navigate({ view: 'play' })}
+        {route.view === 'math' && <MathModule initialPresetId={route.presetId} onPresent={openClassroom} />}
+        {route.view === 'physics' && (
+          <PhysicsModule
+            key={route.experimentId}
+            year={route.year}
+            initialExperimentId={route.experimentId}
+            onPresent={openClassroom}
           />
         )}
-        {route.view === 'math' && <MathModule />}
-        {route.view === 'physics' && <PhysicsModule year={route.year} />}
-        {route.view === 'host' && <HostView />}
+        {route.view === 'host' && <HostView key={route.moduleId} initialModuleId={route.moduleId} />}
         {route.view === 'play' && (
           <PlayView initialRoomCode={route.initialRoomCode} />
         )}

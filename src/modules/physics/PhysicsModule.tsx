@@ -1,10 +1,11 @@
-import { BookOpen, SlidersHorizontal } from 'lucide-react';
+import { BookOpen, Presentation, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormulaSidebar } from '../../components/FormulaSidebar';
 import { GraphCanvas } from '../../components/GraphCanvas';
 import { KatexPreview } from '../../components/KatexPreview';
 import { ParameterList } from '../../components/ParameterList';
 import { TimeControls } from '../../components/TimeControls';
+import { CLASSROOM_MODULES } from '../../data/modules';
 import {
   ActiveCurve,
   AuxDef,
@@ -25,7 +26,7 @@ import {
   PhysicsExperimentId,
 } from './physicsExperiments';
 import { GuidedScenario, YearLevel } from './types';
-import { getPhysicsOverlay } from './visuals/canvasOverlays';
+import { getOpticsDrag, getPhysicsOverlay } from './visuals/canvasOverlays';
 import { PhysicsVisualCard } from './visuals/PhysicsVisualCard';
 
 const PALETTE = ['#38bdf8', '#fbbf24', '#34d399', '#f472b6', '#a78bfa'];
@@ -38,6 +39,8 @@ const YEAR_LABELS: Record<YearLevel, string> = {
 
 interface PhysicsModuleProps {
   year: YearLevel;
+  initialExperimentId?: PhysicsExperimentId;
+  onPresent: (moduleId: string) => void;
 }
 
 function experimentToState(exp: PhysicsExperiment): {
@@ -72,14 +75,17 @@ function experimentToState(exp: PhysicsExperiment): {
   };
 }
 
-export function PhysicsModule({ year }: PhysicsModuleProps) {
+export function PhysicsModule({ year, initialExperimentId, onPresent }: PhysicsModuleProps) {
   const yearExperiments = useMemo(
     () => PHYSICS_EXPERIMENTS.filter((e) => e.year === year),
     [year],
   );
 
   const [experimentId, setExperimentId] = useState<PhysicsExperimentId>(
-    () => yearExperiments[0]?.id ?? PHYSICS_EXPERIMENTS[0].id,
+    () =>
+      yearExperiments.find((e) => e.id === initialExperimentId)?.id ??
+      yearExperiments[0]?.id ??
+      PHYSICS_EXPERIMENTS[0].id,
   );
 
   const experiment = useMemo(
@@ -348,39 +354,11 @@ export function PhysicsModule({ year }: PhysicsModuleProps) {
     [experiment.id],
   );
 
-  // Interactive direct manipulation on Canvas (Snell laser aiming & Thin Lens object dragging)
-  const handleDragWorld = useMemo(() => {
-    if (experiment.id === 'snell-optics') {
-      return (wx: number, wy: number) => {
-        if (wx > -0.1) return false;
-        const dir = wy >= 0 ? 1 : -1;
-        const rawAng = Math.atan2(-wx, Math.abs(wy));
-        const clampedAng = Math.min(1.48, Math.max(0.05, rawAng));
-        setActiveScenarioId(null);
-        setParameters((prev) => ({
-          ...prev,
-          ang1: prev.ang1 ? { ...prev.ang1, value: clampedAng } : prev.ang1,
-          dir: prev.dir ? { ...prev.dir, value: dir } : prev.dir,
-        }));
-        return true;
-      };
-    }
-    if (experiment.id === 'thin-lens') {
-      return (wx: number, wy: number, phase: 'down' | 'move') => {
-        if (phase === 'down' && wx > -0.4) return false;
-        const nextP = Math.min(7.5, Math.max(0.6, -wx));
-        const nextH = Math.min(3.0, Math.max(0.5, wy));
-        setActiveScenarioId(null);
-        setParameters((prev) => ({
-          ...prev,
-          p: prev.p ? { ...prev.p, value: nextP } : prev.p,
-          hObj: prev.hObj ? { ...prev.hObj, value: nextH } : prev.hObj,
-        }));
-        return true;
-      };
-    }
-    return undefined;
-  }, [experiment.id]);
+  const { target, onDrag } = getOpticsDrag(experiment.id, scope, (name, patch) => {
+    setActiveScenarioId(null);
+    setParameters((current) => ({ ...current, [name]: { ...current[name], ...patch } }));
+  });
+  const lesson = CLASSROOM_MODULES.find((item) => item.engineId === experiment.id);
 
   return (
     <div className="module-body">
@@ -430,6 +408,11 @@ export function PhysicsModule({ year }: PhysicsModuleProps) {
               <section className="physics-info-card">
                 <h3>{experiment.title}</h3>
                 <p>{experiment.summary}</p>
+                {lesson && (
+                  <button className="btn-primary present-cta" onClick={() => onPresent(lesson.id)}>
+                    <Presentation size={15} aria-hidden="true" /> Apresentar para a turma
+                  </button>
+                )}
                 <KatexPreview latex={experiment.keyFormulaTex} />
                 <div className="legend-row">
                   {experiment.legendItems.map((item) => (
@@ -443,6 +426,7 @@ export function PhysicsModule({ year }: PhysicsModuleProps) {
 
               <ParameterList
                 parameters={parameters}
+                glossary={experiment.theory.variables}
                 onUpdate={(name, patch) => {
                   setActiveScenarioId(null);
                   setParameters((prev) => ({
@@ -452,33 +436,36 @@ export function PhysicsModule({ year }: PhysicsModuleProps) {
                 }}
               />
 
-              <FormulaSidebar
-                formulas={formulas}
-                parsedMap={parsedMap}
-                telemetryMap={telemetryMap}
-                onAdd={() => {
-                  const color = PALETTE[formulas.length % PALETTE.length];
-                  setFormulas((prev) => [
-                    ...prev,
-                    { id: `p-${Date.now()}`, raw: '', color, visible: true },
-                  ]);
-                }}
-                onChange={(id, raw) =>
-                  setFormulas((prev) =>
-                    prev.map((f) => (f.id === id ? { ...f, raw } : f)),
-                  )
-                }
-                onToggleVisible={(id) =>
-                  setFormulas((prev) =>
-                    prev.map((f) =>
-                      f.id === id ? { ...f, visible: !f.visible } : f,
-                    ),
-                  )
-                }
-                onRemove={(id) =>
-                  setFormulas((prev) => prev.filter((f) => f.id !== id))
-                }
-              />
+              <details className="physics-formulas" key={experiment.id}>
+                <summary>Editar fórmulas da simulação</summary>
+                <FormulaSidebar
+                  formulas={formulas}
+                  parsedMap={parsedMap}
+                  telemetryMap={telemetryMap}
+                  onAdd={() => {
+                    const color = PALETTE[formulas.length % PALETTE.length];
+                    setFormulas((prev) => [
+                      ...prev,
+                      { id: `p-${Date.now()}`, raw: '', color, visible: true },
+                    ]);
+                  }}
+                  onChange={(id, raw) =>
+                    setFormulas((prev) =>
+                      prev.map((f) => (f.id === id ? { ...f, raw } : f)),
+                    )
+                  }
+                  onToggleVisible={(id) =>
+                    setFormulas((prev) =>
+                      prev.map((f) =>
+                        f.id === id ? { ...f, visible: !f.visible } : f,
+                      ),
+                    )
+                  }
+                  onRemove={(id) =>
+                    setFormulas((prev) => prev.filter((f) => f.id !== id))
+                  }
+                />
+              </details>
             </>
           )}
         </div>
@@ -492,7 +479,10 @@ export function PhysicsModule({ year }: PhysicsModuleProps) {
           viewport={viewport}
           onViewportChange={setViewport}
           renderOverlay={overlayFn}
-          onDragWorld={handleDragWorld}
+          defaultViewport={experiment.viewport}
+          dragTarget={target}
+          onDragWorld={onDrag}
+          label={experiment.shortTitle}
         />
 
         {experiment.visualCard && (

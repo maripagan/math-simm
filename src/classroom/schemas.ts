@@ -83,6 +83,7 @@ export const CollectiveChallengeSchema = z.object({
 export type CollectiveChallenge = z.infer<typeof CollectiveChallengeSchema>;
 
 export const ModuleCategorySchema = z.enum([
+  'Matemática',
   'Mecânica',
   'Termodinâmica',
   'Óptica',

@@ -8,6 +8,7 @@ import {
   Eye,
   Flame,
   Lightbulb,
+  Monitor,
   PanelRightClose,
   PanelRightOpen,
   Play,
@@ -23,22 +24,24 @@ import { GraphCanvas } from '../../components/GraphCanvas';
 import { KatexPreview } from '../../components/KatexPreview';
 import { ParameterList } from '../../components/ParameterList';
 import { TimeControls } from '../../components/TimeControls';
-import { CLASSROOM_MODULES } from '../../data/modules';
+import { CLASSROOM_MODULES, getClassroomModuleById } from '../../data/modules';
+import { EULER_PARAMETERS, EULER_PRESET_ID } from '../../modules/math/mathPresets';
 import { PhysicsVisualCard } from '../../modules/physics/visuals/PhysicsVisualCard';
 import { useHostRoom } from '../hooks/useHostRoom';
 import { QuizOptionId, StepMode } from '../schemas';
 import {
   ChallengeOverlayConfig,
+  getSimulationScene,
   useSimulationBridge,
 } from '../useSimulationBridge';
 
 const STEP_LABELS: Record<StepMode, string> = {
-  lobby_story: '1. Lobby & História',
-  quiz: '2. Quiz Intuição',
-  simulation: '3. Prova Real + Teoria',
-  quiz_prediction: '4. Previsão Guiada',
-  challenge: '5. Desafio Coletivo',
-  report: '6. Relatório Pós-Aula',
+  lobby_story: 'Abertura',
+  quiz: 'Quiz de intuição',
+  simulation: 'Simulação',
+  quiz_prediction: 'Previsão',
+  challenge: 'Desafio coletivo',
+  report: 'Relatório',
 };
 
 const STEP_ORDER: StepMode[] = [
@@ -51,16 +54,19 @@ const STEP_ORDER: StepMode[] = [
 ];
 
 const OPTION_COLORS: Record<QuizOptionId, string> = {
-  A: '#0ea5e9',
-  B: '#ec4899',
-  C: '#10b981',
-  D: '#f59e0b',
+  A: '#2563eb',
+  B: '#e11d48',
+  C: '#059669',
+  D: '#d97706',
 };
 
-export function HostView() {
-  const [selectedModuleId, setSelectedModuleId] = useState<string>(
-    CLASSROOM_MODULES[0].id,
-  );
+interface HostViewProps {
+  initialModuleId?: string;
+}
+
+export function HostView({ initialModuleId }: HostViewProps) {
+  const initialModule = getClassroomModuleById(initialModuleId ?? '') ?? CLASSROOM_MODULES[0];
+  const [projector, setProjector] = useState(false);
   const [tagFilter, setTagFilter] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const [drawerTab, setDrawerTab] = useState<'theory' | 'guide' | 'bridges'>(
@@ -81,7 +87,7 @@ export function HostView() {
     prevStep,
     revealCurrentQuiz,
     executeChallengeWinner,
-  } = useHostRoom({ initialModuleId: selectedModuleId });
+  } = useHostRoom({ initialModuleId: initialModule.id });
 
   const challengeOverlay: ChallengeOverlayConfig | undefined = useMemo(() => {
     if (
@@ -106,8 +112,11 @@ export function HostView() {
     (roomState.mode === 'challenge' &&
       roomState.challengeVoteState?.status === 'executed');
 
+  const scene = getSimulationScene((module ?? initialModule).engineId);
+  const experiment = 'theory' in scene ? scene : undefined;
+  const glossary = experiment?.theory.variables ?? (scene.id === EULER_PRESET_ID ? EULER_PARAMETERS : undefined);
   const sim = useSimulationBridge({
-    engineId: module?.engineId ?? 'ideal-gas',
+    scene,
     externalPreset: roomState.enginePreset,
     challengeOverlay,
     initialPlaying: shouldPlaySim,
@@ -146,11 +155,6 @@ export function HostView() {
     return v['1'] + v['2'] + v['3'];
   }, [roomState.challengeVoteState]);
 
-  const handleSelectModule = (id: string) => {
-    setSelectedModuleId(id);
-    selectModule(id);
-  };
-
   if (!module) {
     return (
       <div className="classroom-empty">
@@ -160,19 +164,24 @@ export function HostView() {
   }
 
   return (
-    <div className="classroom-host">
+    <div className={`classroom-host${projector ? ' projector-mode' : ''}`}>
       {/* Barra de controle do professor (oculta na impressão PDF) */}
       <div className="host-control-bar no-print">
         <div className="host-bar-left">
-          <div className="room-code-chip" title="Código da sala ao vivo">
+          <span
+            className={`live-badge ${connected ? 'online' : ''}`}
+            title={
+              transportKind === 'supabase'
+                ? 'Sincronização pela internet'
+                : 'Sincronização entre abas deste navegador'
+            }
+          >
             <Radio size={14} className={connected ? 'pulse-online' : ''} />
+            {connected ? (transportKind === 'supabase' ? 'Ao vivo' : 'Sessão local') : 'Sala desconectada'}
+          </span>
+          <div className="room-code-chip" title="Código da sala">
             <span>{roomCode}</span>
           </div>
-          <span className="transport-badge">
-            {transportKind === 'supabase'
-              ? 'Supabase Realtime'
-              : 'Sync Local (Abas)'}
-          </span>
           <span className="students-counter">
             <Users size={14} />
             <strong>{roomState.studentsCount}</strong> alunos
@@ -197,34 +206,42 @@ export function HostView() {
               }`}
               onClick={() => goToStep(idx)}
               title={STEP_LABELS[mode]}
+              aria-current={roomState.currentStepIndex === idx ? 'step' : undefined}
             >
-              {idx + 1}
+              <b>{idx + 1}</b>
+              <span>{STEP_LABELS[mode]}</span>
             </button>
           ))}
-          <span className="step-current-label">
-            {STEP_LABELS[roomState.mode]}
-          </span>
         </div>
 
         <div className="host-bar-right">
-          <a
-            href={joinUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-secondary host-test-link"
-            title="Abre a tela mobile do aluno em outra aba para testar agora"
-          >
-            <ExternalLink size={14} />
-            <span>Testar Aluno</span>
-          </a>
+          {roomState.mode === 'lobby_story' && !projector && (
+            <a
+              href={joinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary host-test-link"
+              title="Abre a tela do aluno em outra aba"
+            >
+              <ExternalLink size={14} />
+              <span>Tela do aluno</span>
+            </a>
+          )}
+
+          <button className="btn-secondary projector-toggle" aria-pressed={projector}
+            onClick={() => setProjector((current) => !current)}>
+            <Monitor size={14} aria-hidden="true" />
+            <span>Modo projetor</span>
+          </button>
 
           <button
             className="btn-secondary"
             disabled={roomState.currentStepIndex === 0}
             onClick={prevStep}
+            aria-label="Voltar uma etapa"
+            title="Voltar uma etapa"
           >
-            <ArrowLeft size={14} />
-            <span>Voltar</span>
+            <ArrowLeft size={14} aria-hidden="true" />
           </button>
 
           <button
@@ -245,23 +262,25 @@ export function HostView() {
           <div className="host-lobby-layout">
             <aside className="host-module-picker">
               <div className="picker-header">
-                <h3>Módulos de Aula (V1)</h3>
+                <h3>Módulos de aula</h3>
                 <input
                   type="text"
                   className="tag-filter-input"
-                  placeholder="Filtrar por tema ou tag..."
+                  placeholder="Buscar por tema"
+                  aria-label="Buscar aula por tema"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
                 />
               </div>
               <div className="module-list">
+                {filteredModules.length === 0 && <p className="lesson-empty">Nenhuma aula encontrada.</p>}
                 {filteredModules.map((mod) => (
                   <button
                     key={mod.id}
                     className={`module-card-btn ${
                       mod.id === module.id ? 'active' : ''
                     }`}
-                    onClick={() => handleSelectModule(mod.id)}
+                    onClick={() => selectModule(mod.id)}
                   >
                     <span className="mod-cat">{mod.category}</span>
                     <strong>{mod.title}</strong>
@@ -277,60 +296,72 @@ export function HostView() {
 
             <section className="host-lobby-main">
               <div className="lobby-join-card">
-                <div className="qr-box">
-                  <QRCodeSVG
-                    value={joinUrl}
-                    size={196}
-                    bgColor="#ffffff"
-                    fgColor="#0b1120"
-                    level="M"
-                  />
-                </div>
                 <div className="join-info">
-                  <span className="eyebrow">Escaneie ou acesse no celular</span>
-                  <div className="big-room-code">{roomCode}</div>
-                  <p className="join-url-hint">{joinUrl}</p>
-                  <div className="lobby-stats-row">
+                  <span className="eyebrow">Convide a turma</span>
+                  <h2 className="join-title">Entre pelo celular</h2>
+                  <ol className="join-steps">
+                    <li>Aponte a câmera para o QR code</li>
+                    <li>
+                      ou abra <b>{window.location.host}</b> e toque em <b>Entrar com código</b>
+                    </li>
+                  </ol>
+                  <div className="big-room-code" aria-label={`Código da sala ${roomCode}`}>{roomCode}</div>
+                  {transportKind !== 'supabase' && (
+                    <p className="join-url-hint">Sessão local: abra a tela do aluno em outra aba deste navegador.</p>
+                  )}
+                </div>
+                <div className="join-side">
+                  <div className="qr-box">
+                    <QRCodeSVG
+                      value={joinUrl}
+                      size={232}
+                      bgColor="#ffffff"
+                      fgColor="#232323"
+                      level="M"
+                    />
+                  </div>
+                  <div className="lobby-stats-row" aria-live="polite">
                     <span>
-                      <Users size={16} /> {participants.length} conectados
+                      <Users size={16} aria-hidden="true" /> <b>{participants.length}</b> na sala
                     </span>
                     <span>
-                      <CheckCircle2 size={16} color="#34d399" />{' '}
-                      {roomState.readyCount} prontos
+                      <CheckCircle2 size={16} aria-hidden="true" /> <b>{roomState.readyCount}</b> prontos
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="historical-hook-card">
-                <div className="hook-meta">
-                  <Sparkles size={16} color="#fbbf24" />
-                  <span>
-                    Contexto Histórico · {module.historicalHook.year} —{' '}
-                    <strong>{module.historicalHook.figure}</strong>
-                  </span>
-                </div>
-                <h2>{module.title}</h2>
-                <p>{module.historicalHook.shortText}</p>
-                <div className="opening-q-box">
-                  <strong>Pergunta disparadora:</strong>{' '}
-                  {module.teacherGuide.openingQuestion}
-                </div>
-              </div>
-
-              {participants.length > 0 && (
+              {participants.length > 0 ? (
                 <div className="lobby-roster">
                   {participants.map((p) => (
                     <span
                       key={p.studentId}
                       className={`roster-pill ${p.ready ? 'ready' : ''}`}
                     >
-                      {p.ready ? '✓ ' : ''}
+                      {p.ready && <CheckCircle2 size={14} aria-hidden="true" />}
                       {p.nickname}
                     </span>
                   ))}
                 </div>
+              ) : (
+                <p className="lobby-waiting">Os nomes aparecem aqui assim que cada aluno entra.</p>
               )}
+
+              <div className="historical-hook-card">
+                <div className="hook-meta">
+                  <Sparkles size={15} aria-hidden="true" />
+                  <span>
+                    {module.historicalHook.year} · <strong>{module.historicalHook.figure}</strong>
+                  </span>
+                </div>
+                <h2>{module.title}</h2>
+                <p>{module.historicalHook.shortText}</p>
+                <div className="opening-q-box">
+                  <span className="opening-q-label">Pergunta para abrir a aula</span>
+                  {module.teacherGuide.openingQuestion}
+                </div>
+              </div>
+
             </section>
           </div>
         )}
@@ -348,8 +379,8 @@ export function HostView() {
                 <div className="quiz-top-meta">
                   <span className="quiz-type-badge">
                     {roomState.mode === 'quiz'
-                      ? 'Quiz de Aquecimento · Intuição'
-                      : 'Previsão Guiada · O que vai acontecer?'}
+                      ? 'Quiz de intuição'
+                      : 'Previsão · o que vai acontecer?'}
                   </span>
                   <div className="quiz-timer-chip">
                     <Clock size={16} />
@@ -382,9 +413,6 @@ export function HostView() {
                               : 'is-dimmed'
                             : ''
                         }`}
-                        style={{
-                          borderLeftColor: OPTION_COLORS[opt.id],
-                        }}
                       >
                         <div className="opt-head">
                           <span
@@ -422,18 +450,18 @@ export function HostView() {
                     >
                       <Eye size={18} />
                       <span>
-                        Encerrar &amp; Revelar Resposta
+                        Encerrar e revelar a resposta
                         {roomState.mode === 'quiz_prediction'
-                          ? ' na Engine'
+                          ? ' na simulação'
                           : ''}
                       </span>
                     </button>
                   ) : (
                     <div className="quiz-explanation-banner">
-                      <CheckCircle2 size={20} color="#34d399" />
+                      <CheckCircle2 size={20} aria-hidden="true" />
                       <div>
                         <strong>
-                          Resposta Correta: {activeQuestion.correctOption}
+                          Resposta correta: {activeQuestion.correctOption}
                         </strong>
                         <p>{activeQuestion.explanation}</p>
                       </div>
@@ -450,12 +478,14 @@ export function HostView() {
                       defs={sim.auxDefs}
                       scope={sim.scope}
                       viewport={sim.viewport}
+                      defaultViewport={sim.defaultViewport}
+                      highContrast={projector}
                       onViewportChange={sim.setViewport}
                       renderOverlay={sim.overlayFn}
                     />
-                    {sim.experiment.visualCard && (
+                    {experiment?.visualCard && (
                       <PhysicsVisualCard
-                        type={sim.experiment.visualCard}
+                        type={experiment.visualCard}
                         scope={sim.scope}
                       />
                     )}
@@ -482,12 +512,14 @@ export function HostView() {
                 defs={sim.auxDefs}
                 scope={sim.scope}
                 viewport={sim.viewport}
+                defaultViewport={sim.defaultViewport}
+                highContrast={projector}
                 onViewportChange={sim.setViewport}
                 renderOverlay={sim.overlayFn}
               />
-              {sim.experiment.visualCard && (
+              {experiment?.visualCard && (
                 <PhysicsVisualCard
-                  type={sim.experiment.visualCard}
+                  type={experiment.visualCard}
                   scope={sim.scope}
                 />
               )}
@@ -501,6 +533,7 @@ export function HostView() {
               />
 
               <button
+                hidden={projector}
                 className="drawer-toggle-fab"
                 onClick={() => setDrawerOpen((v) => !v)}
                 title={drawerOpen ? 'Recolher painel' : 'Abrir painel'}
@@ -513,26 +546,26 @@ export function HostView() {
               </button>
             </main>
 
-            {drawerOpen && (
+            {drawerOpen && !projector && (
               <aside className="host-teacher-drawer">
                 <div className="drawer-tabs">
                   <button
                     className={drawerTab === 'theory' ? 'active' : ''}
                     onClick={() => setDrawerTab('theory')}
                   >
-                    <Lightbulb size={14} /> Pílula
+                    <Lightbulb size={14} /> Teoria
                   </button>
                   <button
                     className={drawerTab === 'guide' ? 'active' : ''}
                     onClick={() => setDrawerTab('guide')}
                   >
-                    <BookOpen size={14} /> Guia &amp; Sliders
+                    <BookOpen size={14} /> Guia e parâmetros
                   </button>
                   <button
                     className={drawerTab === 'bridges' ? 'active' : ''}
                     onClick={() => setDrawerTab('bridges')}
                   >
-                    <Sparkles size={14} /> STEAM
+                    <Sparkles size={14} /> Conexões
                   </button>
                 </div>
 
@@ -540,15 +573,15 @@ export function HostView() {
                   {drawerTab === 'theory' && (
                     <div className="theory-pill-stack">
                       <div className="pill-block myth">
-                        <span className="pill-label">Mito Derrubado</span>
+                        <span className="pill-label">Mito derrubado</span>
                         <p>{module.theoryPill.mythBusted}</p>
                       </div>
                       <div className="pill-block insight">
-                        <span className="pill-label">Insight Principal</span>
+                        <span className="pill-label">Ideia principal</span>
                         <p>{module.theoryPill.ahaInsight}</p>
                       </div>
                       <div className="pill-block formula">
-                        <span className="pill-label">Equação Chave</span>
+                        <span className="pill-label">Equação-chave</span>
                         <KatexPreview latex={module.theoryPill.formulaLatex} />
                         <ul className="vars-legend">
                           {module.theoryPill.variablesLegend.map((v) => (
@@ -557,7 +590,7 @@ export function HostView() {
                         </ul>
                       </div>
                       <div className="pill-block everyday">
-                        <span className="pill-label">No Cotidiano</span>
+                        <span className="pill-label">No cotidiano</span>
                         <p>{module.theoryPill.everydayApp}</p>
                       </div>
                     </div>
@@ -566,15 +599,16 @@ export function HostView() {
                   {drawerTab === 'guide' && (
                     <div className="guide-stack">
                       <div className="pill-block">
-                        <span className="pill-label">Pergunta Disparadora</span>
+                        <span className="pill-label">Pergunta para abrir a aula</span>
                         <p>{module.teacherGuide.openingQuestion}</p>
                       </div>
                       <div className="pill-block pitfall">
-                        <span className="pill-label">Armadilha Comum</span>
+                        <span className="pill-label">Erro comum</span>
                         <p>{module.teacherGuide.commonPitfall}</p>
                       </div>
                       <ParameterList
                         parameters={sim.parameters}
+                        glossary={glossary}
                         onUpdate={sim.updateParameter}
                       />
                     </div>
@@ -615,7 +649,7 @@ export function HostView() {
             <div className="challenge-left-panel">
               <div className="challenge-header-card">
                 <span className="challenge-badge">
-                  <Flame size={15} /> Desafio Coletivo da Turma
+                  <Flame size={15} aria-hidden="true" /> Desafio da turma
                 </span>
                 <h2>{module.collectiveChallenge.goalDescription}</h2>
                 <span className="challenge-votes-meta">
@@ -634,12 +668,14 @@ export function HostView() {
                       : 0;
                   const isWinner =
                     roomState.challengeVoteState?.winningOptionId === opt.id;
+                  const isExecuted =
+                    roomState.challengeVoteState?.status === 'executed';
 
                   return (
                     <div
                       key={opt.id}
                       className={`challenge-option-row ${
-                        isWinner ? 'winner' : ''
+                        isExecuted ? (isWinner ? 'winner' : 'is-dimmed') : ''
                       }`}
                     >
                       <div className="ch-opt-top">
@@ -651,7 +687,7 @@ export function HostView() {
                           className="opt-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            backgroundColor: isWinner ? '#34d399' : '#38bdf8',
+                            backgroundColor: isWinner ? '#059669' : '#2563eb',
                           }}
                         />
                         <span className="opt-bar-label">
@@ -666,14 +702,10 @@ export function HostView() {
               {roomState.challengeVoteState.status === 'open' ? (
                 <button
                   className="btn-reveal-big"
-                  onClick={() => {
-                    executeChallengeWinner();
-                    sim.setTimePlaying(true);
-                    sim.resetTime();
-                  }}
+                  onClick={executeChallengeWinner}
                 >
                   <Play size={18} />
-                  <span>Executar Configuração Mais Votada na Engine</span>
+                  <span>Simular a opção mais votada</span>
                 </button>
               ) : (
                 <div
@@ -685,13 +717,13 @@ export function HostView() {
                   <div>
                     <strong>
                       {roomState.challengeVoteState.didClassWin
-                        ? 'Missão Cumprida! A turma venceu o desafio!'
+                        ? 'A turma venceu o desafio!'
                         : 'Quase lá! A configuração escolhida não atingiu a meta.'}
                     </strong>
                     <p>
                       Opção vencedora:{' '}
-                      {roomState.challengeVoteState.winningOptionId} — analise o
-                      comportamento ao vivo na engine.
+                      {roomState.challengeVoteState.winningOptionId}. Veja o
+                      resultado ao vivo na simulação.
                     </p>
                   </div>
                 </div>
@@ -705,12 +737,14 @@ export function HostView() {
                   defs={sim.auxDefs}
                   scope={sim.scope}
                   viewport={sim.viewport}
+                  defaultViewport={sim.defaultViewport}
+                  highContrast={projector}
                   onViewportChange={sim.setViewport}
                   renderOverlay={sim.overlayFn}
                 />
-                {sim.experiment.visualCard && (
+                {experiment?.visualCard && (
                   <PhysicsVisualCard
-                    type={sim.experiment.visualCard}
+                    type={experiment.visualCard}
                     scope={sim.scope}
                   />
                 )}
@@ -734,7 +768,7 @@ export function HostView() {
               <header className="report-header">
                 <div>
                   <span className="report-eyebrow">
-                    MathSimulator · Relatório Pós-Aula
+                    MathSimulator · Relatório da aula
                   </span>
                   <h1>{module.title}</h1>
                   <p className="report-sub">
@@ -748,25 +782,25 @@ export function HostView() {
                   onClick={() => window.print()}
                 >
                   <Printer size={16} />
-                  <span>Exportar Relatório (PDF)</span>
+                  <span>Exportar PDF</span>
                 </button>
               </header>
 
               <div className="report-kpi-grid">
                 <div className="kpi-card">
-                  <span className="kpi-label">Alunos Participantes</span>
+                  <span className="kpi-label">Alunos participantes</span>
                   <strong className="kpi-value">
                     {reportSummary.totalStudents}
                   </strong>
                 </div>
                 <div className="kpi-card">
-                  <span className="kpi-label">Acerto Geral da Turma</span>
+                  <span className="kpi-label">Acerto da turma</span>
                   <strong className="kpi-value">
                     {reportSummary.overallAccuracyPercent}%
                   </strong>
                 </div>
                 <div className="kpi-card">
-                  <span className="kpi-label">Desafio Coletivo</span>
+                  <span className="kpi-label">Desafio da turma</span>
                   <strong className="kpi-value">
                     {reportSummary.challengeWon === null
                       ? 'Não executado'
@@ -779,7 +813,7 @@ export function HostView() {
 
               {reportSummary.hardestQuestion && (
                 <section className="report-section">
-                  <h3>Ponto de Reforço (Maior Índice de Erro)</h3>
+                  <h3>Ponto para reforçar</h3>
                   <div className="reinforcement-box">
                     <span className="error-rate-badge">
                       {reportSummary.hardestQuestion.errorRatePercent}% de erro
@@ -790,7 +824,7 @@ export function HostView() {
               )}
 
               <section className="report-section">
-                <h3>Pódio dos Destaques</h3>
+                <h3>Destaques da turma</h3>
                 {reportSummary.podium.length === 0 ? (
                   <p className="report-muted">
                     Nenhum aluno registrou respostas nesta sessão.
@@ -813,7 +847,7 @@ export function HostView() {
               </section>
 
               <section className="report-section">
-                <h3>Resumo Conceitual da Aula</h3>
+                <h3>Resumo da aula</h3>
                 <p>
                   <strong>Mito derrubado:</strong>{' '}
                   {module.theoryPill.mythBusted}

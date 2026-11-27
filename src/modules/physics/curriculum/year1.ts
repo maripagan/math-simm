@@ -447,23 +447,23 @@ export const YEAR1_EXPERIMENTS: PhysicsExperiment[] = [
     title: 'Lei Gravitacional — Órbitas de Kepler',
     shortTitle: 'Órbitas (Kepler)',
     summary:
-      'Solução analítica das órbitas gravitacionais com o Sol no foco (0, 0). Altere a excentricidade ecc: 0 = círculo, 0..1 = elipse, >1 = hipérbole.',
+      'Solução analítica das órbitas gravitacionais com o Sol no foco (0, 0). Altere a excentricidade ecc: 0 = círculo, entre 0 e 1 = elipse, 1 = parábola, acima de 1 = hipérbole.',
     keyFormulaTex:
-      'r(\\theta) = \\frac{a(1 - \\varepsilon^2)}{1 + \\varepsilon\\cos\\theta}',
+      'r(\\theta) = \\frac{q(1 + \\varepsilon)}{1 + \\varepsilon\\cos\\theta}',
     legendItems: [
       { label: 'Órbita & Planeta', color: '#38bdf8' },
       { label: 'Estrela / Foco (0, 0)', color: '#fbbf24' },
       { label: 'Periélio & Afélio', color: '#34d399' },
     ],
     formulas: [
-      { raw: 'p = a * abs(1 - ecc^2)', color: '#94a3b8' },
-      { raw: 'z(t) = (p / (1 + ecc * cos(t))) * e^(i * t)', color: '#38bdf8' },
+      { raw: 'p = q * (1 + ecc)', color: '#94a3b8' },
+      { raw: 'z(t) = 1 + ecc * cos(t) > 0 ? (p / (1 + ecc * cos(t))) * e^(i * t) : NaN', color: '#38bdf8' },
     ],
     parameters: {
-      a: { value: 3.4, min: 1.2, max: 6, step: 0.1 },
-      ecc: { value: 0.58, min: 0, max: 1.35, step: 0.04 },
+      q: { value: 1.4, min: 0.5, max: 4.5, step: 0.1 },
+      ecc: { value: 0.58, min: 0, max: 1.35, step: 0.01 },
     },
-    viewport: { centerX: -1.2, centerY: 0, scale: 60 },
+    viewport: { centerX: -2.4, centerY: 0, scale: 46 },
     theory: {
       intuition: [
         'A 1ª Lei de Kepler afirma que planetas descrevem órbitas elípticas com o Sol em um dos focos. Newton provou que isso decorre da força gravitacional cair com 1/r².',
@@ -475,7 +475,7 @@ export const YEAR1_EXPERIMENTS: PhysicsExperiment[] = [
         },
       ],
       variables: [
-        { symbol: 'a', name: 'Semieixo maior da órbita', unit: 'UA' },
+        { symbol: 'q', name: 'Distância ao periélio', unit: 'UA' },
         { symbol: 'ecc', name: 'Excentricidade orbital ε', unit: 'adim.' },
       ],
       observations: [
@@ -485,20 +485,20 @@ export const YEAR1_EXPERIMENTS: PhysicsExperiment[] = [
         {
           id: 'kep-circle',
           label: 'Órbita Circular (ε = 0)',
-          description: 'Periélio e Afélio ficam iguais ao raio a.',
-          params: { a: 3.0, ecc: 0 },
+          description: 'Periélio e Afélio ficam iguais ao raio q.',
+          params: { q: 3.0, ecc: 0 },
         },
         {
           id: 'kep-comet',
           label: 'Elipse Excêntrica (ε = 0.72)',
           description: 'Órbita alongada típica de cometas periódicos.',
-          params: { a: 3.6, ecc: 0.72 },
+          params: { q: 1.0, ecc: 0.72 },
         },
         {
           id: 'kep-hyper',
           label: 'Passagem Hiperbólica (ε = 1.25)',
           description: 'Trajetória aberta de escape.',
-          params: { a: 2.5, ecc: 1.25 },
+          params: { q: 0.6, ecc: 1.25 },
         },
       ],
       commonPitfall:

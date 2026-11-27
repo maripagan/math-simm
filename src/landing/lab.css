@@ -1,0 +1,259 @@
+.lab {
+  --lab-bg: #ffffff;
+  --lab-panel: #f8fafd;
+  --lab-line: #dce4f0;
+  --lab-ink: #162033;
+  --lab-muted: #4b5b75;
+  --lab-on: #2563eb;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 40px minmax(0, 1fr);
+  height: 420px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--lab-bg);
+  color: var(--lab-ink);
+  font: 400 14px/1.4 var(--font-text);
+  box-shadow: 0 0 0 1px var(--lab-line), 0 4px 12px rgb(22 32 51 / 0.08), 0 24px 56px -24px rgb(22 32 51 / 0.22);
+}
+
+.lab__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--lab-line);
+  color: var(--lab-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.lab__dots {
+  display: flex;
+  gap: 6px;
+}
+
+.lab__dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.lab__crumb {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab__crumb i {
+  font-style: normal;
+  opacity: 0.5;
+}
+
+.lab__crumb b {
+  color: var(--lab-ink);
+  font-weight: 500;
+}
+
+.lab__body {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.lab__side {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--lab-line);
+}
+
+.lab__side button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--lab-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lab__side button:hover {
+  color: var(--lab-ink);
+  background: #eef3fa;
+}
+
+.lab__side button[aria-pressed='true'] {
+  color: var(--lab-on);
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+.lab__side button[aria-pressed='true']::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--lab-on);
+  vertical-align: 1px;
+}
+
+.lab__main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.lab__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--lab-line);
+  background: var(--lab-panel);
+}
+
+.lab__head .katex-preview {
+  flex: none;
+  font-size: 16px;
+  color: var(--lab-ink);
+}
+
+.lab__control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 160px;
+  min-width: 0;
+  color: var(--lab-muted);
+  font-size: 13px;
+}
+
+.lab__control input {
+  flex: 1;
+  min-width: 60px;
+  min-height: 24px;
+  margin: 0;
+  accent-color: var(--lab-on);
+  cursor: pointer;
+}
+
+.lab__control output {
+  flex: none;
+  min-width: 64px;
+  color: var(--lab-on);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.lab__readout {
+  flex: none;
+  color: var(--lab-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lab__play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--lab-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lab-ink);
+  cursor: pointer;
+}
+
+.lab__play:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.lab :is(button, input):focus-visible {
+  outline: 2px solid var(--lab-on);
+  outline-offset: 2px;
+}
+
+.lab__canvas {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lab .canvas-container {
+  position: absolute;
+  inset: 0;
+}
+
+.lab .graph-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+.lab .graph-canvas:active {
+  cursor: grabbing;
+}
+
+.lab .graph-canvas.has-drag-target {
+  touch-action: none;
+}
+
+.lab .graph-canvas.over-drag-target {
+  cursor: move;
+}
+
+.lab .reset-view-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--lab-line);
+  background: rgb(255 255 255 / 0.92);
+  color: var(--lab-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (max-width: 1023px) {
+  .lab__readout {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .lab {
+    height: 360px;
+  }
+
+  .lab__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lab__side,
+  .lab__crumb > span {
+    display: none;
+  }
+
+  .lab__head {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .lab__head .katex-preview {
+    font-size: 14px;
+  }
+}

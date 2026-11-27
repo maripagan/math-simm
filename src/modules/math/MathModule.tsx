@@ -1,4 +1,4 @@
-import { BookOpen, Check, Share2, Sparkles } from 'lucide-react';
+import { BookOpen, Check, Presentation, Share2, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormulaSidebar } from '../../components/FormulaSidebar';
 import { GraphCanvas } from '../../components/GraphCanvas';
@@ -6,6 +6,7 @@ import { GuideModal } from '../../components/GuideModal';
 import { ParameterList } from '../../components/ParameterList';
 import { PresetModal } from '../../components/PresetModal';
 import { TimeControls } from '../../components/TimeControls';
+import { CLASSROOM_MODULES } from '../../data/modules';
 import {
   ActiveCurve,
   AuxDef,
@@ -69,7 +70,9 @@ function presetToState(preset: PresetScene): {
   };
 }
 
-function getInitialScene() {
+function getInitialScene(presetId?: string) {
+  const preset = MATH_PRESETS.find((item) => item.id === presetId);
+  if (preset) return presetToState(preset);
   const fromUrl = loadSceneFromUrl();
   if (fromUrl) return fromUrl;
   const fromStorage = loadSceneFromLocalStorage();
@@ -77,8 +80,13 @@ function getInitialScene() {
   return presetToState(MATH_PRESETS[0]);
 }
 
-export function MathModule() {
-  const initial = useMemo(() => getInitialScene(), []);
+export function MathModule({ initialPresetId, onPresent }: {
+  initialPresetId?: string;
+  onPresent: (moduleId: string) => void;
+}) {
+  const [initial] = useState(() => getInitialScene(initialPresetId));
+  const [activePresetId, setActivePresetId] = useState(initialPresetId);
+  const lesson = CLASSROOM_MODULES.find((item) => item.engineId === activePresetId);
 
   const [formulas, setFormulas] = useState<FormulaItem[]>(initial.formulas);
   const [parameters, setParameters] = useState<Record<string, ParameterConfig>>(
@@ -302,6 +310,7 @@ export function MathModule() {
 
   const handleSelectPreset = (preset: PresetScene) => {
     const next = presetToState(preset);
+    setActivePresetId(preset.id);
     setFormulas(next.formulas);
     setParameters(next.parameters);
     setViewport(next.viewport);
@@ -345,12 +354,17 @@ export function MathModule() {
             onClick={handleShare}
             title="Copiar link da cena"
           >
-            {copied ? <Check size={14} color="#34d399" /> : <Share2 size={14} />}
+            {copied ? <Check size={14} color="#0e6b3f" /> : <Share2 size={14} />}
             <span>{copied ? 'Copiado' : 'Link'}</span>
           </button>
         </div>
 
         <div className="sidebar-scroll">
+          {lesson && (
+            <button className="btn-primary present-cta" onClick={() => onPresent(lesson.id)}>
+              <Presentation size={15} aria-hidden="true" /> Apresentar a aula de Euler para a turma
+            </button>
+          )}
           <FormulaSidebar
             formulas={formulas}
             parsedMap={parsedMap}

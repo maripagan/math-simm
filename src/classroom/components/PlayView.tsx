@@ -14,8 +14,8 @@ import { useStudentRoom } from '../hooks/useStudentRoom';
 import { QuizOptionId } from '../schemas';
 
 const OPTION_STYLES: Record<QuizOptionId, { bg: string; label: string }> = {
-  A: { bg: '#0284c7', label: 'A' },
-  B: { bg: '#db2777', label: 'B' },
+  A: { bg: '#2563eb', label: 'A' },
+  B: { bg: '#e11d48', label: 'B' },
   C: { bg: '#059669', label: 'C' },
   D: { bg: '#d97706', label: 'D' },
 };
@@ -88,14 +88,14 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
           <div className="play-brand">
             <span className="brand-mark">∫</span>
             <div>
-              <h1>Entrar na Sala</h1>
-              <p>Sem cadastro — digite o código projetado pelo professor</p>
+              <h1>Entrar na aula</h1>
+              <p>Sem cadastro. Use o código que está no projetor.</p>
             </div>
           </div>
 
           <form onSubmit={handleJoin} className="play-join-form">
             <label>
-              <span>Código da Sala</span>
+              <span>Código da sala</span>
               <input
                 type="text"
                 value={roomInput}
@@ -107,7 +107,7 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
             </label>
 
             <label>
-              <span>Seu Apelido</span>
+              <span>Seu nome ou apelido</span>
               <input
                 type="text"
                 value={nicknameInput}
@@ -126,7 +126,7 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
               className="play-cta-btn"
               disabled={joining}
             >
-              {joining ? 'Conectando...' : 'Entrar Agora'}
+              {joining ? 'Conectando…' : 'Entrar'}
             </button>
           </form>
         </div>
@@ -167,9 +167,9 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
 
         {!roomClosed && !roomState && (
           <div className="play-card centered">
-            <Sparkles size={28} color="#38bdf8" />
+            <Sparkles size={28} aria-hidden="true" />
             <h2>Conectado à sala {joinedRoomCode}</h2>
-            <p>Aguardando o professor iniciar a aula no projetor...</p>
+            <p>Aguarde o professor começar a aula.</p>
           </div>
         )}
 
@@ -202,8 +202,8 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
               <div className="play-quiz-meta">
                 <span>
                   {roomState.mode === 'quiz'
-                    ? 'Quiz de Intuição'
-                    : 'Previsão Guiada'}
+                    ? 'Quiz de intuição'
+                    : 'Previsão'}
                 </span>
                 <span className="play-timer">
                   <Clock size={14} /> {roomState.quizState.timeLeft}s
@@ -222,12 +222,12 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
                 >
                   {currentAnswer === activeQuestion.correctOption ? (
                     <>
-                      <CheckCircle2 size={36} color="#34d399" />
+                      <CheckCircle2 size={36} aria-hidden="true" />
                       <h3>Você acertou! +100 pts</h3>
                     </>
                   ) : (
                     <>
-                      <XCircle size={36} color="#fb7185" />
+                      <XCircle size={36} aria-hidden="true" />
                       <h3>
                         Quase lá! A resposta era {activeQuestion.correctOption}
                       </h3>
@@ -239,8 +239,9 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
                 <div className="play-options-grid">
                   {activeQuestion.options.map((opt) => {
                     const chosen = currentAnswer === opt.id;
+                    const hasChosen = Boolean(currentAnswer);
                     const locked =
-                      Boolean(currentAnswer) ||
+                      hasChosen ||
                       roomState.quizState?.status !== 'open';
                     return (
                       <button
@@ -248,7 +249,7 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
                         className={`play-option-btn ${chosen ? 'chosen' : ''}`}
                         style={{
                           backgroundColor: OPTION_STYLES[opt.id].bg,
-                          opacity: locked && !chosen ? 0.45 : 1,
+                          opacity: hasChosen && !chosen ? 0.35 : 1,
                         }}
                         disabled={locked}
                         onClick={() => submitQuizVote(opt.id)}
@@ -274,7 +275,7 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
         {!roomClosed && roomState?.mode === 'simulation' && module && (
           <div className="play-card">
             <span className="play-eyebrow">
-              Olhe para o projetor · Cartão-Resumo
+              Olhe para o projetor
             </span>
             <h2>{module.title}</h2>
             <div className="play-summary-block">
@@ -299,7 +300,7 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
           roomState.challengeVoteState && (
             <div className="play-card">
               <span className="play-eyebrow">
-                <Flame size={14} /> Votação Coletiva
+                <Flame size={14} aria-hidden="true" /> Votação da turma
               </span>
               <h2>{module.collectiveChallenge.goalDescription}</h2>
 
@@ -356,8 +357,8 @@ export function PlayView({ initialRoomCode = '' }: PlayViewProps) {
         {/* ETAPA 6: PONTUAÇÃO FINAL */}
         {!roomClosed && roomState?.mode === 'report' && (
           <div className="play-card centered">
-            <Trophy size={42} color="#fbbf24" />
-            <h2>Aula Concluída!</h2>
+            <Trophy size={42} aria-hidden="true" />
+            <h2>Aula concluída</h2>
             {myLeaderboardEntry ? (
               <div className="play-final-stats">
                 <div className="final-rank">#{myLeaderboardEntry.rank}</div>

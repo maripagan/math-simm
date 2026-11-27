@@ -1,12 +1,481 @@
 <!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MathSimulator — Simulador Interativo de Fórmulas</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="pt-BR" data-type="software" data-radius="soft" data-ground="sand" data-buttons="tonal" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>(function(){var h=location.hash,p=location.pathname.replace(/\/+$/,''),m={'/host':'#/host','/sala/criar':'#/host','/play':'#/play','/entrar':'#/play'};if(/^#(\/|scene=)/.test(h))location.replace('/app.html'+h);else if(m[p])location.replace('/app.html'+m[p]+location.search)})()</script>
+<title>MathSimulator: simulador de física e matemática para professores</title>
+<meta name="description" content="Experimentos de física do 1º ao 3º ano e cenas de matemática que respondem a cada parâmetro, com quiz ao vivo pelo celular da turma.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MathSimulator: simulador de física e matemática para professores">
+<meta property="og:description" content="Experimentos de física do 1º ao 3º ano e cenas de matemática que respondem a cada parâmetro.">
+<meta property="og:image" content="share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#f4f6fa">
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/system.css">
+<link rel="stylesheet" href="/assets/ui/cards.css">
+<link rel="stylesheet" href="/assets/motion/motion.css">
+<link rel="stylesheet" href="/assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="/assets/layout/layout.css">
+<link rel="stylesheet" href="/assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #f4f6fa; --p-surface: #e9eff7; --p-ink: #162033; --p-muted: #4b5b75;
+  --p-accent: #dbeafe; --p-accent-ink: #1d4ed8; --p-action: #2563eb; --p-action-ink: #ffffff;
+  --p-inv-bg: #e9eff7; --p-inv-surface: #ffffff; --p-inv-ink: #162033; --p-inv-muted: #4b5b75;
+  --p-inv-accent: #dbeafe; --p-inv-accent-ink: #1d4ed8; --p-inv-action: #2563eb; --p-inv-action-ink: #ffffff;
+  --font-display: "Instrument Sans", system-ui, sans-serif;
+  --font-text: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 500;
+  --display-tracking: -0.028em;
+  --display-tracking-xl: -0.036em;
+  --display-stretch: 96%;
+  --ly-scale: 1.04;
+}
+</style>
+<link rel="stylesheet" href="/assets/ui/base.css">
+<link rel="stylesheet" href="/assets/ui/window/fragment.css">
+<link rel="stylesheet" href="/assets/ui/toggles/fragment.css">
+<link rel="stylesheet" href="/assets/diagrams/diagram.css">
+<script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
+<script src="/assets/backgrounds/backgrounds.js"></script>
+<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
+<link rel="modulepreload" href="/assets/moments/moments.js">
+<link rel="modulepreload" href="/assets/moments/lib.js">
+<link rel="modulepreload" href="/assets/moments/letters-assemble/moment.js">
+<style>
+  .hero--centred .hero__window > .ly-piece { width: min(960px, calc(100% - 2 * var(--s-6))); bottom: var(--s-6); }
+  .hero--centred .hero__window .lab { height: 100%; }
+
+  .app.ui { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-top: var(--s-7); background: var(--u-bg); border: 1px solid var(--u-border); border-radius: var(--u-r); box-shadow: var(--u-shadow); }
+  .app > .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .app > .app__pane + .app__pane { border-left: 1px solid var(--u-line); }
+  .app > .app__pane > .ui-panel { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+  .app > .app__pane::after { content: ""; position: absolute; inset: auto 0 0 0; height: 64px; background: linear-gradient(transparent, var(--u-bg)); pointer-events: none; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .app.ui { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+  @media (max-width: 1023px) {
+    .app.ui { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    .app > .app__pane--list { max-height: 252px; }
+    .app > .app__pane--list::after { display: none; }
+    .app .ui-win__side { display: none; }
+    .app .ui-win__body { grid-template-columns: minmax(0, 1fr); }
+    .app > .app__pane + .app__pane { border-left: 0; border-top: 1px solid var(--u-line); }
+  }
+  @media (max-width: 639px) {
+    .app.ui { grid-template-rows: minmax(0, 1fr); }
+    .app > .app__pane--list { display: none; }
+    .app > .app__pane + .app__pane { border-top: 0; }
+  }
+
+  .host { display: grid; gap: 20px; padding: 20px 24px 32px; background: var(--u-bg); color: var(--u-ink); font: 400 14px/1.45 var(--font-text); }
+  .host__bar { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--u-muted); }
+  .host__code { font-family: var(--font-mono); font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--u-soft, #f1f1f1); color: var(--u-ink); }
+  .host__timer { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--u-ink); }
+  .host__type { margin: 0; font-size: 13px; color: var(--u-muted); }
+  .host__q { margin: 0; font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; max-width: 30ch; }
+  .host__opts { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .host__opts li { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; border: 1px solid var(--u-line); border-radius: 10px; overflow: hidden; }
+  .host__opts li::before { content: ""; position: absolute; inset: 0; background: color-mix(in oklab, var(--u-ink) 6%, transparent); transform-origin: left; transform: scaleX(var(--v)); }
+  .host__opts li > * { position: relative; }
+  .host__opts b { font-weight: 500; font-family: var(--font-mono); color: var(--u-muted); }
+  .host__opts em { font-style: normal; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--u-muted); }
+  .host__opts li.is-right { border-color: #059669; }
+  .host__opts li.is-right::before { background: #dcfce7; }
+  .host__foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; color: var(--u-muted); }
+  .host__btn { padding: 8px 14px; border-radius: 8px; background: var(--u-ink); color: var(--u-bg); font-weight: 500; }
+  @media (prefers-reduced-motion: no-preference) {
+    .host__opts li::before { animation: host-vote 3.6s cubic-bezier(.22, 1, .36, 1) 2 both; }
+    .host__opts li.is-right { animation: host-right 3.6s step-end 2 both; }
+    .app:hover .host__opts li::before, .app:hover .host__opts li.is-right { animation-iteration-count: 1; animation-name: host-vote-b; }
+    .app:hover .host__opts li.is-right { animation-name: host-right-b; }
+  }
+  @keyframes host-vote { 0% { transform: scaleX(0); } 55%, 100% { transform: scaleX(var(--v)); } }
+  @keyframes host-vote-b { 0% { transform: scaleX(0); } 55%, 100% { transform: scaleX(var(--v)); } }
+  @keyframes host-right { 0% { border-color: var(--u-line); } 70%, 100% { border-color: #2fb873; } }
+  @keyframes host-right-b { 0% { border-color: var(--u-line); } 70%, 100% { border-color: #2fb873; } }
+  @media (max-width: 639px) { .host { padding: 16px; gap: 14px; } .host__q { font-size: 18px; } .host__foot .host__btn { display: none; } }
+
+  #recursos .panel { --p-h: 300px; }
+  @media (max-width: 639px) { #recursos .panel { --p-h: 260px; } }
+  .fp { display: grid; gap: 14px; padding: 16px 18px 20px; }
+  .fp__eq { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--u-soft, #f4f4f4); font-family: var(--font-mono); font-size: 15px; }
+  .fp__row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 56px; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 13px; }
+  .fp__row i { position: relative; height: 4px; border-radius: 4px; background: color-mix(in oklab, var(--u-ink) 12%, transparent); }
+  .fp__row i::after { content: ""; position: absolute; top: 50%; left: calc(var(--p) * 100%); width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--u-ink); }
+  .fp__row b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+  .fp svg { width: 100%; height: 72px; }
+  .fp svg path { fill: none; stroke: #2fb873; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  @media (prefers-reduced-motion: no-preference) {
+    .fp__row:first-of-type i::after { animation: fp-drag 3.2s ease-in-out 2; }
+    .fp svg path { transform-origin: center; animation: fp-wave 3.2s ease-in-out 2; }
+    .card:hover .fp__row:first-of-type i::after, .card:hover .fp svg path { animation-iteration-count: 1; animation-name: fp-drag-b; }
+    .card:hover .fp svg path { animation-name: fp-wave-b; }
+  }
+  @keyframes fp-drag { 0%, 100% { left: 62%; } 50% { left: 92%; } }
+  @keyframes fp-drag-b { 0%, 100% { left: 62%; } 50% { left: 92%; } }
+  @keyframes fp-wave { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.45); } }
+  @keyframes fp-wave-b { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.45); } }
+
+  .snell { display: block; width: 100%; height: 100%; background: #ffffff; }
+  .snell .med { fill: rgb(37 99 235 / .09); }
+  .snell .ax { stroke: rgb(22 32 51 / .24); stroke-width: 1; stroke-dasharray: 4 4; fill: none; }
+  .snell .line { stroke: rgb(22 32 51 / .32); stroke-width: 1; }
+  .snell .ray { stroke: #d97706; stroke-width: 2.5; fill: none; stroke-linecap: round; }
+  .snell .ray2 { stroke: #2563eb; stroke-width: 2.5; fill: none; stroke-linecap: round; }
+  .snell .arc { stroke: rgb(22 32 51 / .45); stroke-width: 1; fill: none; }
+  .snell .knob { fill: #d97706; stroke: #ffffff; stroke-width: 3; }
+  .snell text { fill: #334155; font: 500 13px var(--font-mono); }
+
+  .ft { display: grid; gap: 12px; padding: 16px 18px 20px; }
+  .ft__pit { display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: #fff7e0; color: #5a4300; font-size: 13px; line-height: 1.45; }
+  .ft__pit b { font-weight: 500; }
+  .ft__list { display: grid; margin: 0; padding: 0; list-style: none; }
+  .ft__list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; border-bottom: 1px solid var(--u-line); font-size: 14px; }
+  .ft__list em { font-style: normal; font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--u-soft, #f1f1f1); }
+
+  .hero--centred .hero__lead, #frase .mo-la__sub { color: var(--ink); }
+
+  .frase-viz { display: none; }
+  @media (max-width: 1023px) {
+    .frase-viz { display: grid; gap: var(--s-4); margin-top: var(--s-7); padding: var(--s-5); border-radius: var(--r-lg); background: #ffffff; border: 1px solid #dce4f0; }
+    .frase-viz p { margin: 0; font-family: var(--font-mono); font-size: 16px; color: #2563eb; }
+    .frase-viz svg { width: 100%; height: auto; max-height: 160px; }
+    .frase-viz path, .frase-viz circle { fill: none; vector-effect: non-scaling-stroke; }
+    .frase-viz .ax { stroke: rgb(22 32 51 / .22); stroke-width: 1; }
+    .frase-viz .ring { stroke: #2563eb; stroke-width: 1.5; }
+    .frase-viz .vec { stroke: #2563eb; stroke-width: 2.5; stroke-linecap: round; }
+    .frase-viz .tip { fill: #e11d48; }
+    .frase-viz .wave { stroke: #059669; stroke-width: 2; }
+  }
+  @media (max-width: 639px) {
+    #recursos .card > p { display: none; }
+  }
+  #conteudos .rows li { grid-template-columns: minmax(0, 1fr) auto; }
+  #conteudos .frame { --p-h: 100%; }
+</style>
+</head>
+<body>
+<header class="nav nav--centre">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">Pular para o conteúdo</a>
+    <a class="nav__logo" href="#top"><span class="mark mark--initial" aria-hidden="true">∫</span>MathSimulator</a>
+    <nav class="nav__links" aria-label="Principal">
+      <div class="nav__item"><a class="nav__link" href="#sala">Sala</a></div>
+      <div class="nav__item"><a class="nav__link" href="#recursos">Recursos</a></div>
+      <div class="nav__item"><a class="nav__link" href="#faq">Perguntas</a></div>
+      <div class="nav__item">
+        <a class="nav__link" href="#conteudos">Conteúdos <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <div class="nav__menu">
+          <div class="wrap grid">
+            <div class="menu-col span-3">
+              <p class="t-label">1º ano</p>
+              <a href="#conteudos">Lançamento oblíquo<span>Alcance e altura máxima</span></a>
+              <a href="#conteudos">Plano inclinado<span>Forças e atrito na rampa</span></a>
+              <a href="#conteudos">Órbitas de Kepler<span>Da elipse à hipérbole</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">2º ano</p>
+              <a href="#conteudos">Lei de Snell<span>O aluno arrasta o laser</span></a>
+              <a href="#conteudos">Ciclo de Carnot<span>Pistão e diagrama P × V</span></a>
+              <a href="#conteudos">Efeito Doppler<span>Frentes de onda e cone</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">3º ano</p>
+              <a href="#conteudos">Circuito RLC<span>Fasores e defasagem</span></a>
+              <a href="#conteudos">Efeito fotoelétrico<span>Frequência de corte</span></a>
+              <a href="#conteudos">Meia-vida<span>Decaimento da amostra</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">Matemática</p>
+              <a href="#conteudos">Fórmula de Euler<span>Fasores no plano complexo</span></a>
+              <a href="#conteudos">Desigualdades<span>Regiões e fronteiras</span></a>
+              <a href="#conteudos">Secante e tangente<span>A derivada se formando</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="nav__actions">
+      <a class="nav__link" href="/app.html#/play">Entrar com código</a>
+      <a class="btn btn--primary" href="/app.html#/host?aula=euler-01">Criar uma aula</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+<main id="top">
+  <section class="hero hero--centred" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text">
+      <div class="hero__c">
+        <a class="pill" href="#sala"><span>Modo Sala</span><span class="muted">6 aulas com quiz pelo celular</span></a>
+        <h1 id="hero-h">Simulador de física e matemática</h1>
+        <p class="hero__lead">Para professores do Ensino Médio: 19 experimentos de física e 5 cenas de matemática que mudam na hora em que você mexe num parâmetro.</p>
+        <div class="btn-row"><a class="btn btn--primary" href="/app.html#/host?aula=euler-01">Criar uma aula</a><a class="btn btn--secondary" href="/app.html#/physics?experiment=kepler">Abrir o laboratório</a></div>
+      </div>
+      <div class="hero__window" data-fx="grain-gradient" data-fx-seed="7">
+        <div class="ly-piece" id="hero-lab"></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="sala" aria-labelledby="sala-h">
+    <div class="wrap">
+      <div class="grid">
+        <h2 id="sala-h" class="span-5">Quiz ao vivo com a turma inteira</h2>
+        <p class="span-6 start-7">Escolha uma das 6 aulas prontas e projete o código da sala. Cada aluno vota pelo celular; você encerra, revela a resposta e roda a simulação. <a class="link" href="/app.html#/play">Entrar como aluno</a></p>
+      </div>
+      <div class="ui app fill" role="img" aria-label="Modo Sala: as 17 perguntas das 6 aulas prontas e, ao lado, a pergunta sobre o fasor projetada com os votos da turma e a resposta C marcada">
+        <div class="app__pane app__pane--list">
+          <div class="ui ui-panel ui-win" data-ui="window" data-open="Pronta" data-work="Ao vivo" data-done="Aplicada">
+            <div class="ui-win__bar">
+              <span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="ui-win__crumb">Modo Sala <i>/</i> <b>Perguntas</b></span>
+              <span class="ui-spacer"></span>
+              <span class="ui-win__search" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><span class="ui-win__ph">Buscar</span><span class="ui-kbd">/</span></span>
+            </div>
+            <div class="ui-win__body">
+              <nav class="ui-win__side" aria-hidden="true">
+                <span class="ui-win__nav is-on"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M6.5 6.2a1.6 1.6 0 1 1 2 1.6c-.4.2-.5.5-.5.9M8 11h.01"/></svg>Perguntas<em>17</em></span>
+                <span class="ui-win__nav"><svg class="ui-icon" viewBox="0 0 16 16"><path d="M2.5 3.5h11v9h-11z"/><path d="M5 6.5h6M5 9.5h4"/></svg>Aulas<em>6</em></span>
+                <span class="ui-win__label">Séries</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">#</span>1º ano</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">#</span>2º ano</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">#</span>3º ano</span>
+              </nav>
+              <div class="ui-win__main">
+                <div class="ui-win__cols" aria-hidden="true"><span>Pergunta</span><span>Aula</span><span>Status</span><span>Série</span></div>
+                <ul class="ui-win__rows">
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="1">Eu</span><span class="ui-win__who">Módulo do fasor z(t) = 2eⁱʷᵗ</span><span class="ui-win__sub">Euler · intuição</span><span class="ui-win__st is-you" data-st>Ao vivo</span><span class="ui-win__age">3º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="1">Eu</span><span class="ui-win__who">Período de uma volta quando ω dobra</span><span class="ui-win__sub">Euler · previsão</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">3º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Ke</span><span class="ui-win__who">O satélite que abriu a Era Espacial</span><span class="ui-win__sub">Kepler · interdisciplinar</span><span class="ui-win__st is-done" data-st>Aplicada</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Ke</span><span class="ui-win__who">Por que astronautas flutuam na ISS</span><span class="ui-win__sub">Kepler · intuição</span><span class="ui-win__st is-done" data-st>Aplicada</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Ke</span><span class="ui-win__who">Força ao dobrar a distância</span><span class="ui-win__sub">Kepler · relâmpago</span><span class="ui-win__st is-done" data-st>Aplicada</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">Pr</span><span class="ui-win__who">O ENIAC e a Segunda Guerra</span><span class="ui-win__sub">Projétil · interdisciplinar</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">Pr</span><span class="ui-win__who">O ponto mais alto da trajetória</span><span class="ui-win__sub">Projétil · intuição</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">Pr</span><span class="ui-win__who">Outro ângulo que acerta o alvo</span><span class="ui-win__sub">Projétil · previsão</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">1º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">Sn</span><span class="ui-win__who">Visão embaçada debaixo d’água</span><span class="ui-win__sub">Snell · interdisciplinar</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">Sn</span><span class="ui-win__who">Laser passando do ar para a água</span><span class="ui-win__sub">Snell · intuição</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">Sn</span><span class="ui-win__who">Água trocada por diamante</span><span class="ui-win__sub">Snell · previsão</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="5">Ca</span><span class="ui-win__who">Máquinas a vapor no século XIX</span><span class="ui-win__sub">Carnot · interdisciplinar</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="5">Ca</span><span class="ui-win__who">Rendimento de um motor sem atrito</span><span class="ui-win__sub">Carnot · intuição</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="5">Ca</span><span class="ui-win__who">Área do ciclo com a fonte mais quente</span><span class="ui-win__sub">Carnot · previsão</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">2º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Fa</span><span class="ui-win__who">Fonte de energia sem turbina</span><span class="ui-win__sub">Faraday · interdisciplinar</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">3º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Fa</span><span class="ui-win__who">Ímã parado dentro da bobina</span><span class="ui-win__sub">Faraday · intuição</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">3º</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">Fa</span><span class="ui-win__who">O que dobra o pico de tensão</span><span class="ui-win__sub">Faraday · previsão</span><span class="ui-win__st" data-st>Pronta</span><span class="ui-win__age">3º</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="app__pane app__pane--open" data-ui-loop>
+          <div class="ui ui-panel host">
+            <div class="host__bar"><span class="host__code">FIS-518</span><span>24 alunos na sala</span><span class="host__timer">0:25</span></div>
+            <p class="host__type">Quiz de intuição · pergunta 1 de 2</p>
+            <p class="host__q">Qual é o módulo do fasor z(t) = 2e<sup>iωt</sup> em qualquer instante?</p>
+            <ol class="host__opts">
+              <li style="--v: .08"><b>A</b><span>0</span><em>2</em></li>
+              <li style="--v: .21"><b>B</b><span>1</span><em>5</em></li>
+              <li class="is-right" style="--v: .58"><b>C</b><span>2</span><em>14</em></li>
+              <li style="--v: .13"><b>D</b><span>Depende do tempo</span><em>3</em></li>
+            </ol>
+            <div class="host__foot"><span>A exponencial tem módulo 1; vezes 2, o vetor tem módulo 2.</span><span class="host__btn">Rodar a simulação</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="frase" data-moment="letters-assemble" data-moment-opts='{"spread": 1}' aria-labelledby="frase-h">
+    <div class="wrap">
+      <h2 id="frase-h" class="mo-la__type">Da equação ao experimento</h2>
+      <p class="mo-la__sub">A fórmula na lousa é a mesma do caderno. Muda o número, muda o gráfico, e a turma vê o porquê.</p>
+      <div class="frase-viz" role="img" aria-label="A fórmula z(t) = 2·e elevado a i·1,2·t ao lado do fasor que ela desenha: um vetor girando no círculo e a senoide que ele projeta">
+        <p>z(t) = 2·e<sup>i·1,2·t</sup></p>
+        <svg viewBox="0 0 300 120" aria-hidden="true"><path class="ax" d="M10 60H290M60 10V110"/><circle class="ring" cx="60" cy="60" r="40"/><path class="vec" d="M60 60L88 32"/><circle class="tip" cx="88" cy="32" r="4"/><path class="wave" d="M110 32C130 32 140 92 160 92S190 32 210 32S240 92 260 92S285 50 290 40"/><path class="ax" d="M88 32H110" stroke-dasharray="3 3"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="section g2" id="recursos" aria-labelledby="recursos-h">
+    <div class="wrap">
+      <div class="group">
+        <div class="section-head">
+          <h2 id="recursos-h">Cada fórmula vira um experimento. <span class="muted">A turma vê o efeito na hora.</span></h2>
+        </div>
+        <div class="grid">
+          <article class="card card--row card--open span-6">
+            <h3>Transforma a fórmula em controles</h3>
+            <p>Escreva a fórmula e cada parâmetro livre ganha um controle deslizante com mínimo, máximo e passo.</p>
+            <div class="panel">
+              <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:40px;--ay-sm:16px" data-ui-loop>
+                <div class="ui ui-panel fp" role="img" aria-label="A fórmula y = a · sen(b·x − t) com três controles deslizantes e a onda que eles desenham">
+                  <p class="fp__eq">y = a · sen(b·x − t)</p>
+                  <svg viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20 C 12.5 4, 25 4, 37.5 20 S 62.5 36, 75 20 S 100 4, 112.5 20 S 137.5 36, 150 20 S 175 4, 187.5 20 S 200 28, 200 28"/></svg>
+                  <div class="fp__row"><span>a</span><i style="--p: .62"></i><b>1,5</b></div>
+                  <div class="fp__row"><span>b</span><i style="--p: .35"></i><b>2</b></div>
+                  <div class="fp__row"><span>t</span><i style="--p: .2"></i><b>0,8 s</b></div>
+                </div>
+              </div></div>
+            </div>
+          </article>
+          <article class="card card--row card--open span-6">
+            <h3>Deixa o aluno arrastar o laser</h3>
+            <p>Na Lei de Snell e nas lentes, o raio se move no próprio gráfico até a reflexão interna total.</p>
+            <div class="panel">
+              <svg class="snell" viewBox="0 0 560 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Um raio amarelo arrastado pelo aluno chega à superfície da água e se refrata em verde, com os ângulos de incidência e de refração marcados">
+                <rect class="med" x="0" y="150" width="560" height="150"/>
+                <path class="line" d="M0 150H560"/>
+                <path class="ax" d="M280 20V280"/>
+                <path class="ray" d="M150 40L280 150"/>
+                <path class="ray2" d="M280 150L348 280"/>
+                <path class="arc" d="M280 100 A50 50 0 0 0 242 117"/>
+                <path class="arc" d="M280 200 A50 50 0 0 0 303 194"/>
+                <circle class="knob" cx="150" cy="40" r="9"/>
+                <text x="200" y="98">θ₁ 49,8°</text>
+                <text x="300" y="228">θ₂ 34,9°</text>
+                <text x="400" y="134">n₁ 1,00</text>
+                <text x="400" y="180">n₂ 1,33</text>
+              </svg>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="grid">
+        <article class="card card--row card--open span-6">
+          <h3>Mostra a teoria ao lado da simulação</h3>
+          <p>Cada experimento traz equações, unidades no SI, pegadinhas comuns e cenários que ajustam tudo em 1 clique.</p>
+          <div class="panel">
+            <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:40px;--ay-sm:16px">
+              <div class="ui ui-panel ft" role="img" aria-label="O painel de teoria da Lei de Snell com uma pegadinha comum e três cenários de um clique">
+                <div class="ui-head"><div class="ui-title">Teoria e cenários</div><span class="ui-spacer"></span><div class="ui-meta">Lei de Snell</div></div>
+                <div class="ft__pit"><b>Pegadinha comum</b><span>O ângulo é medido a partir da normal, não da superfície da água.</span></div>
+                <ul class="ft__list">
+                  <li><span>Ângulo crítico</span><em>Testar cenário</em></li>
+                  <li><span>Da água para o ar</span><em>Testar cenário</em></li>
+                  <li><span>Do vidro para a água</span><em>Testar cenário</em></li>
+                </ul>
+              </div>
+            </div></div>
+          </div>
+        </article>
+        <article class="card card--row card--open span-6">
+          <h3>Ajusta a tela para o projetor</h3>
+          <p>No modo projetor, fórmula, traços e votos crescem para a última fileira ler da carteira.</p>
+          <div class="panel">
+            <div class="stage stage--fade-b"><div class="at-right to-edge" style="--ax:32px;--ay:40px">
+              <div class="ui ui-panel ui-toggles" data-ui="toggles">
+                <div class="ui-head">
+                  <svg class="ui-icon ui-toggles__ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v7H2z"/><path d="M6 13.5h4M8 10.5v3"/></svg>
+                  <div class="ui-title">Tela da sala</div>
+                  <span class="ui-spacer"></span>
+                  <div class="ui-meta" data-tg-count>3 de 4 ligados</div>
+                </div>
+                <ul class="ui-toggles__list">
+                  <li class="ui-tg">
+                    <span class="ui-tg__text"><span class="ui-tg__label">Modo projetor</span><span class="ui-tg__sub">Texto e traços maiores</span></span>
+                    <button class="ui-switch is-on" type="button" role="switch" aria-checked="true" aria-label="Modo projetor"><i></i></button>
+                  </li>
+                  <li class="ui-tg">
+                    <span class="ui-tg__text"><span class="ui-tg__label">Alto contraste</span><span class="ui-tg__sub">Para sala com luz acesa</span></span>
+                    <button class="ui-switch is-on" type="button" role="switch" aria-checked="true" aria-label="Alto contraste"><i></i></button>
+                  </li>
+                  <li class="ui-tg">
+                    <span class="ui-tg__text"><span class="ui-tg__label">Cronômetro do quiz</span><span class="ui-tg__sub">25 segundos por pergunta</span></span>
+                    <button class="ui-switch is-on" type="button" role="switch" aria-checked="true" aria-label="Cronômetro do quiz"><i></i></button>
+                  </li>
+                  <li class="ui-tg">
+                    <span class="ui-tg__text"><span class="ui-tg__label">Mostrar resposta</span><span class="ui-tg__sub">Só quando você encerrar</span></span>
+                    <button class="ui-switch" type="button" role="switch" aria-checked="false" aria-label="Mostrar resposta"><i></i></button>
+                  </li>
+                </ul>
+              </div>
+            </div></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq" aria-labelledby="faq-h">
+    <div class="wrap">
+      <div class="grid">
+        <div class="span-5 stack-4">
+          <h2 id="faq-h">Perguntas de professores</h2>
+          <p>O que perguntam antes da primeira aula.</p>
+        </div>
+        <div class="faq span-6 start-7">
+          <div class="faq__item"><h3>O laboratório precisa de instalação?</h3><p>Não. Ele abre no navegador do computador ligado ao projetor.</p></div>
+          <div class="faq__item"><h3>Os alunos precisam de conta?</h3><p>Não. Eles digitam no celular o código que aparece na lousa e um nome.</p></div>
+          <div class="faq__item"><h3>Posso usar sem o Modo Sala?</h3><p>Sim. Escolha o experimento, projete e mexa nos parâmetros com a turma.</p></div>
+          <div class="faq__item"><h3>A turma precisa de aplicativo?</h3><p>Não. A tela do aluno abre no navegador do celular.</p></div>
+          <div class="faq__item"><h3>Posso enviar uma cena por link?</h3><p>Sim. A Matemática gera um link que abre a mesma fórmula com os mesmos controles.</p></div>
+          <div class="faq__item"><h3>Quais aulas já vêm prontas?</h3><p>Euler, Kepler, projétil, Snell, Carnot e Faraday, com 2 ou 3 perguntas cada.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="conteudos" style="--hm: 2" aria-labelledby="conteudos-h">
+    <div class="wrap">
+      <div class="grid fill">
+        <div class="span-6 stack-6">
+          <h2 id="conteudos-h">19 experimentos do 1º ao 3º ano</h2>
+          <ul class="rows">
+            <li><span class="rows__name">1º ano: mecânica e gravitação</span><span class="rows__value">7</span></li>
+            <li><span class="rows__name">2º ano: termologia, óptica e ondas</span><span class="rows__value">4</span></li>
+            <li><span class="rows__name">3º ano: eletricidade e física moderna</span><span class="rows__value">8</span></li>
+            <li><span class="rows__name">Matemática: funções e números complexos</span><span class="rows__value">5 cenas</span></li>
+          </ul>
+        </div>
+        <div class="panel span-6 start-7">
+          <div class="dg" data-diagram><script type="application/json">{"layout": "hub", "alt": "A fórmula de Euler ligada ao circuito RLC, às órbitas de Kepler, à Lei de Snell e às ondas", "center": {"label": "Fórmula de Euler", "icon": "ui:sigma"}, "spokes": [{"label": "Circuito RLC", "icon": "ui:zap", "children": [{"label": "Impedância", "icon": "ui:activity"}, {"label": "Defasagem", "icon": "ui:clock"}]}, {"label": "Órbitas de Kepler", "icon": "ui:orbit", "children": [{"label": "Coordenadas polares", "icon": "ui:compass"}]}, {"label": "Lei de Snell", "icon": "ui:lightbulb", "children": [{"label": "Seno do ângulo", "icon": "ui:triangle"}]}, {"label": "Ondas", "icon": "ui:waves", "children": [{"label": "Efeito Doppler", "icon": "ui:radio"}]}]}</script></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="footer closing" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--type">
+      <div class="section-head">
+        <h2 id="close-h">Leve a próxima aula para a lousa</h2>
+        <p>Escolha a aula, projete o código e a turma entra pelo celular.</p>
+      </div>
+      <a class="btn btn--primary btn--xl btn--wide" href="/app.html#/host?aula=euler-01">Criar uma aula<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-4 stack-4">
+          <a class="nav__logo" href="#top"><span class="mark mark--initial" aria-hidden="true">∫</span>MathSimulator</a>
+          <p class="footer__lede">Física e matemática que se mexem.</p>
+        </div>
+        <div class="span-2 footer__col"><h3>Sala</h3><ul><li><a href="#sala">Quiz ao vivo</a></li><li><a href="/app.html#/play">Entrar com código</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Recursos</h3><ul><li><a href="#recursos">Controles</a></li><li><a href="#frase">Equação e experimento</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Perguntas</h3><ul><li><a href="#faq">Antes da aula</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Conteúdos</h3><ul><li><a href="/app.html#/physics?experiment=kepler">Física</a></li><li><a href="/app.html#/math">Matemática</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 MathSimulator</span>
+        <div class="socials"></div>
+      </div>
+    </div>
+  </div>
+</footer>
+<nav class="actionbar" aria-label="Ações rápidas">
+  <a class="btn btn--primary" href="/app.html#/host?aula=euler-01">Criar uma aula</a>
+</nav>
+<script type="module" src="/src/landing/main.tsx"></script>
+<script type="module" src="/assets/system.js"></script>
+<script type="module" src="/assets/motion/motion.js"></script>
+<script type="module" src="/assets/layout/layout.js"></script>
+<script type="module" src="/assets/diagrams/mount.js"></script>
+</body>
 </html>

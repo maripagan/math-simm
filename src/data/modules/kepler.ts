@@ -26,10 +26,10 @@ export const keplerModule: ClassroomModule = ClassroomModuleSchema.parse({
     everydayApp:
       'Satélites de GPS no celular, previsão do tempo e internet via satélite.',
     formulaLatex:
-      'F = G\\frac{M \\cdot m}{d^2}, \\quad r(\\theta) = \\frac{a(1 - \\varepsilon^2)}{1 + \\varepsilon\\cos\\theta}',
+      'F = G\\frac{M \\cdot m}{d^2}, \\quad r(\\theta) = \\frac{q(1 + \\varepsilon)}{1 + \\varepsilon\\cos\\theta}',
     variablesLegend: [
-      'a: Semieixo maior da órbita (UA)',
-      'ecc (ε): Excentricidade orbital (0 = círculo, 0..1 = elipse, >1 = escape)',
+      'q: Distância ao periélio (UA)',
+      'ecc (ε): Excentricidade orbital (0 = círculo, 0 < ε < 1 = elipse, ε = 1 = parábola, ε > 1 = hipérbole)',
       'G: Constante gravitacional universal',
       'd: Distância entre os centros de massa',
     ],
@@ -74,8 +74,8 @@ export const keplerModule: ClassroomModule = ClassroomModuleSchema.parse({
       correctOption: 'B',
       explanation:
         'A 400 km de altitude a gravidade ainda é ~89% da superfície; a sensação de imponderabilidade vem da queda livre orbital contínua.',
-      enginePresetBefore: { a: 3.2, ecc: 0.45 },
-      enginePresetAfter: { a: 3.2, ecc: 0.0 },
+      enginePresetBefore: { q: 1.8, ecc: 0.45 },
+      enginePresetAfter: { q: 3.2, ecc: 0.0 },
     },
     {
       id: 'kepler-q2-lightning',
@@ -92,31 +92,31 @@ export const keplerModule: ClassroomModule = ClassroomModuleSchema.parse({
       correctOption: 'B',
       explanation:
         'Como a atração gravitacional cai com o inverso do quadrado da distância (1/d²), dobrar d reduz a força a 1/4.',
-      enginePresetBefore: { a: 2.0, ecc: 0.2 },
-      enginePresetAfter: { a: 4.0, ecc: 0.2 },
+      enginePresetBefore: { q: 1.6, ecc: 0.2 },
+      enginePresetAfter: { q: 3.2, ecc: 0.2 },
     },
   ],
   collectiveChallenge: {
     goalDescription:
       'Colocar o satélite em uma órbita circular estável (excentricidade nula) sem esticar demais nem escapar da gravidade.',
-    targetValidationRule: 'ecc === 0 && a >= 2.0 && a <= 4.5',
+    targetValidationRule: 'ecc === 0 && q >= 2.0 && q <= 4.5',
     votingOptions: [
       {
         id: '1',
-        label: 'Semieixo a = 3,0 UA | Excentricidade ecc = 0,00',
-        preset: { a: 3.0, ecc: 0 },
+        label: 'Periélio q = 3,0 UA | Excentricidade ecc = 0,00',
+        preset: { q: 3.0, ecc: 0 },
         isSuccess: true, // Órbita circular estável
       },
       {
         id: '2',
-        label: 'Semieixo a = 3,6 UA | Excentricidade ecc = 0,76',
-        preset: { a: 3.6, ecc: 0.76 },
+        label: 'Periélio q = 0,9 UA | Excentricidade ecc = 0,76',
+        preset: { q: 0.9, ecc: 0.76 },
         isSuccess: false, // Elipse muito excêntrica (cometa)
       },
       {
         id: '3',
-        label: 'Semieixo a = 2,5 UA | Excentricidade ecc = 1,24',
-        preset: { a: 2.5, ecc: 1.24 },
+        label: 'Periélio q = 0,6 UA | Excentricidade ecc = 1,24',
+        preset: { q: 0.6, ecc: 1.24 },
         isSuccess: false, // Trajetória hiperbólica de escape!
       },
     ],
